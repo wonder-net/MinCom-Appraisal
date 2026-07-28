@@ -1,0 +1,85 @@
+<?php
+
+declare(strict_types=1);
+
+namespace App\Entity;
+
+use App\Repository\GrowthPlanRepository;
+use Doctrine\ORM\Mapping as ORM;
+use Symfony\Component\Uid\Uuid;
+
+/**
+ * Port of apps.growth_plans.models.GrowthPlan. One-to-one with
+ * Appraisal (enforced by the unique constraint on appraisal_id).
+ *
+ * `overallAssessment` is encrypted at rest (AES-256-GCM, transparent via
+ * App\Doctrine\Type\EncryptedStringType), matching Django's
+ * EncryptedTextField.
+ */
+#[ORM\Entity(repositoryClass: GrowthPlanRepository::class)]
+#[ORM\Table(name: 'growth_plan')]
+#[ORM\UniqueConstraint(name: 'unique_growth_plan_per_appraisal', columns: ['appraisal_id'])]
+class GrowthPlan
+{
+    #[ORM\Id]
+    #[ORM\Column(type: 'uuid', unique: true)]
+    private Uuid $id;
+
+    #[ORM\OneToOne(targetEntity: Appraisal::class)]
+    #[ORM\JoinColumn(name: 'appraisal_id', nullable: false, onDelete: 'CASCADE')]
+    private Appraisal $appraisal;
+
+    #[ORM\Column(type: 'encrypted_string', nullable: true)]
+    private ?string $overallAssessment = '';
+
+    #[ORM\Column(type: 'datetime_immutable')]
+    private \DateTimeImmutable $createdAt;
+
+    #[ORM\Column(type: 'datetime_immutable')]
+    private \DateTimeImmutable $updatedAt;
+
+    public function __construct(Appraisal $appraisal, ?string $overallAssessment = '')
+    {
+        $this->id = Uuid::v7();
+        $this->appraisal = $appraisal;
+        $this->overallAssessment = $overallAssessment;
+        $this->createdAt = new \DateTimeImmutable();
+        $this->updatedAt = new \DateTimeImmutable();
+    }
+
+    #[ORM\PreUpdate]
+    public function touch(): void
+    {
+        $this->updatedAt = new \DateTimeImmutable();
+    }
+
+    public function getId(): Uuid
+    {
+        return $this->id;
+    }
+
+    public function getAppraisal(): Appraisal
+    {
+        return $this->appraisal;
+    }
+
+    public function getOverallAssessment(): ?string
+    {
+        return $this->overallAssessment;
+    }
+
+    public function setOverallAssessment(?string $overallAssessment): void
+    {
+        $this->overallAssessment = $overallAssessment;
+    }
+
+    public function getCreatedAt(): \DateTimeImmutable
+    {
+        return $this->createdAt;
+    }
+
+    public function getUpdatedAt(): \DateTimeImmutable
+    {
+        return $this->updatedAt;
+    }
+}

@@ -1,0 +1,47 @@
+# yaml-language-server: $schema=../vendor/symfony/dependency-injection/Loader/schema/services.schema.json
+
+# This file is the entry point to configure your own services.
+# Files in the packages/ subdirectory configure your dependencies.
+# See also https://symfony.com/doc/current/service_container/import.html
+
+# Put parameters here that don't need to change on each machine where the app is deployed
+# https://symfony.com/doc/current/best_practices.html#use-parameters-for-application-configuration
+parameters:
+    app.session_absolute_timeout_hours: '%env(int:SESSION_ABSOLUTE_TIMEOUT_HOURS)%'
+    app.turnstile_secret_key: '%env(TURNSTILE_SECRET_KEY)%'
+    app.mfa_required: '%env(bool:MFA_REQUIRED)%'
+    app.bulk_import_storage_dir: '%kernel.project_dir%/var/bulk-imports'
+    app.appraisal_template_dir: '%kernel.project_dir%/resources/appraisal_templates'
+    app.frontend_url: '%env(FRONTEND_URL)%'
+    app.pdf_logo_path: '%kernel.project_dir%/resources/images/logo-pdf.png'
+    app.audit_hmac_key: '%env(AUDIT_HMAC_KEY)%'
+    app.mailer_from_address: '%env(MAILER_FROM_ADDRESS)%'
+    app.postmark_message_stream: '%env(POSTMARK_MESSAGE_STREAM)%'
+
+services:
+    # default configuration for services in *this* file
+    _defaults:
+        autowire: true      # Automatically injects dependencies in your services.
+        autoconfigure: true # Automatically registers your services as commands, event subscribers, etc.
+        bind:
+            string $secretKey: '%app.turnstile_secret_key%'
+            int $sessionAbsoluteTimeoutHours: '%app.session_absolute_timeout_hours%'
+            bool $mfaRequired: '%app.mfa_required%'
+            int $refreshTokenTtl: '%gesdinet_jwt_refresh_token.ttl%'
+            string $bulkImportStorageDir: '%app.bulk_import_storage_dir%'
+            string $appraisalTemplateDir: '%app.appraisal_template_dir%'
+            string $frontendUrl: '%app.frontend_url%'
+            string $pdfLogoPath: '%app.pdf_logo_path%'
+            string $auditHmacKey: '%app.audit_hmac_key%'
+            string $mailerFromAddress: '%app.mailer_from_address%'
+            string $postmarkMessageStream: '%app.postmark_message_stream%'
+
+    # makes classes in src/ available to be used as services
+    # this creates a service per class whose id is the fully-qualified class name
+    App\:
+        resource: '../src/'
+
+    Symfony\Component\Security\Core\Authentication\AuthenticationTrustResolverInterface: '@security.authentication.trust_resolver'
+
+    # add more service definitions when explicit configuration is needed
+    # please note that last definitions always *replace* previous ones

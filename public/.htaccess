@@ -1,0 +1,39 @@
+<IfModule mod_rewrite.c>
+    RewriteEngine On
+
+    RewriteCond %{REQUEST_URI}::$0 ^(/.+)/(.*)::\2$
+    RewriteRule .* - [E=BASE:%1]
+
+    RewriteCond %{HTTP:Authorization} .+
+    RewriteRule ^ - [E=HTTP_AUTHORIZATION:%0]
+
+    RewriteCond %{ENV:REDIRECT_STATUS} =""
+    RewriteRule ^index\.php(?:/(.*)|$) %{ENV:BASE}/$1 [R=301,L]
+
+    # Serve an existing file directly if the request maps to one — covers
+    # both the React build's assets/ and Symfony's own public/bundles/
+    # (EasyAdmin's assets). Mirrors nginx/default.prod.conf's asset
+    # location block, adapted to mod_rewrite.
+    RewriteCond %{REQUEST_FILENAME} -f
+    RewriteRule ^ - [L]
+
+    # API and EasyAdmin (exact match only — the SPA has its own longer
+    # /admin/* client routes, e.g. /admin/users, which must NOT hit this)
+    # go through Symfony's front controller.
+    RewriteRule ^api/ %{ENV:BASE}/index.php [L]
+    RewriteRule ^admin$ %{ENV:BASE}/index.php [L]
+    RewriteRule ^admin/login$ %{ENV:BASE}/index.php [L]
+    RewriteRule ^admin/logout$ %{ENV:BASE}/index.php [L]
+
+    # Everything else is a client-side SPA route (or a 404) — serve the
+    # React shell and let client-side routing take over, instead of
+    # falling through to Symfony's own router (which has no route for
+    # e.g. /reports and would 404 first).
+    RewriteRule ^ %{ENV:BASE}/index.html [L]
+</IfModule>
+
+<IfModule !mod_rewrite.c>
+    <IfModule mod_alias.c>
+        RedirectMatch 307 ^/$ /index.php/
+    </IfModule>
+</IfModule>

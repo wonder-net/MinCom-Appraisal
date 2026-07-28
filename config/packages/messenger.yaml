@@ -1,0 +1,43 @@
+framework:
+    messenger:
+        # Once a message on `async`/`notification_email` exhausts its
+        # transport's own retry_strategy, it lands here instead of being
+        # dropped — inspect/retry via `messenger:failed:show`/
+        # `messenger:failed:retry`. Doctrine-backed (same DB, no extra
+        # infra), so this works identically in dev and prod.
+        failure_transport: failed
+
+        transports:
+            # https://symfony.com/doc/current/messenger.html#transport-configuration
+            # Celery replacement (see plan): local dev uses the Doctrine transport
+            # (no Redis available outside containers); docker-compose.yml overrides
+            # MESSENGER_TRANSPORT_DSN to Redis for container/production parity.
+            async: '%env(MESSENGER_TRANSPORT_DSN)%'
+            # Same DSN as `async` but its own retry_strategy, matching
+            # Django's send_notification_email Celery task
+            # (max_retries=3, default_retry_delay=60 -> 60s/120s/240s
+            # backoff). Kept separate from `async` so this doesn't change
+            # the already-tested bulk-import messages' retry timing.
+            notification_email:
+                dsn: '%env(MESSENGER_TRANSPORT_DSN)%'
+                retry_strategy:
+                    max_retries: 3
+                    delay: 60000
+                    multiplier: 2
+            failed: 'doctrine://default?queue_name=failed'
+            sync: 'sync://'
+
+        routing:
+            App\Message\ExecuteBulkImportMessage: async
+            App\Message\ValidateUserBulkImportMessage: async
+            App\Message\CommitUserBulkImportMessage: async
+            App\Message\ExecuteAppraisalBulkImportMessage: async
+            App\Message\SendNotificationEmailMessage: notification_email
+
+when@test:
+    framework:
+        messenger:
+            transports:
+                async: 'in-memory://'
+                notification_email: 'in-memory://'
+                failed: 'in-memory://'

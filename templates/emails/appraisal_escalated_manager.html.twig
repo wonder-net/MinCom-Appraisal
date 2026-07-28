@@ -1,0 +1,19 @@
+{% extends "emails/base_email.html.twig" %}
+{% block body %}
+<p style="margin: 0 0 16px 0; font-size: 15px; color: #2d3748; line-height: 1.6;">
+  Dear {{ recipient_name }},
+</p>
+<p style="margin: 0 0 16px 0; font-size: 15px; color: #2d3748; line-height: 1.6;">
+  HR has assigned <strong>{{ employee_name }}</strong>'s performance appraisal (<strong>{{ cycle_period }}</strong>) to an Executive, who will now carry it through to sign-off.
+</p>
+<p style="margin: 0 0 24px 0; font-size: 15px; color: #2d3748; line-height: 1.6;">
+  You retain read-only access to the appraisal. No further action is required from you on this appraisal.
+</p>
+<table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%">
+  <tr>
+    <td align="center" style="padding: 0 0 24px 0;">
+      <a href="{{ appraisal_url }}" style="display: inline-block; padding: 12px 32px; background-color: #1a365d; color: #ffffff; font-size: 14px; font-weight: 600; text-decoration: none; border-radius: 6px;">View Appraisal</a>
+    </td>
+  </tr>
+</table>
+{% endblock body %}

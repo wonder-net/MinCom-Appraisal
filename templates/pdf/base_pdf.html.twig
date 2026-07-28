@@ -1,0 +1,284 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <title>{% block title %}MINCOM Performance Appraisal{% endblock %}</title>
+  <style>
+    /* ---------------------------------------------------------------
+       A4 portrait page setup — dompdf @page directive
+       All measurements use pt or cm for print fidelity.
+       --------------------------------------------------------------- */
+    /* dompdf has no support for the @bottom-center/@bottom-right margin
+       boxes WeasyPrint renders this footer with (silently ignored, not
+       an error) — see the footer <script type="text/php"> block near
+       the end of this file for the working dompdf-native replacement. */
+    @page {
+      size: A4 portrait;
+      margin: 2cm;
+    }
+
+    /* ---------------------------------------------------------------
+       Base typography and resets
+
+       Scoped to `body *` rather than the universal `*` selector: a
+       bare `* { margin/padding/box-sizing }` reset that also matches
+       `html`/`body` corrupts dompdf's @page margin box computation
+       entirely (confirmed empirically — even two plain sibling <div>s
+       with no other styling lose their left/top page margin once this
+       reset applies to the page root elements; scoping it to `body *`
+       excludes html/body from the reset and fixes it, with identical
+       visual output otherwise). WeasyPrint has no such issue with the
+       universal selector, so this divergence is dompdf-specific.
+       --------------------------------------------------------------- */
+    body * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: Arial, Helvetica, sans-serif;
+      font-size: 9pt;
+      line-height: 1.4;
+      color: #1a202c;
+    }
+
+    /* ---------------------------------------------------------------
+       Header — MINCOM branding
+       --------------------------------------------------------------- */
+    .header {
+      display: flex;
+      align-items: center;
+      border-bottom: 2pt solid #1a365d;
+      padding-bottom: 0.4cm;
+      margin-bottom: 0.6cm;
+    }
+
+    .header-logo {
+      width: 14mm;
+      height: 14mm;
+      object-fit: contain;
+      flex-shrink: 0;
+      margin-right: 10pt;
+    }
+
+    .header-text {
+      flex: 1;
+    }
+
+    .header-org-name {
+      font-size: 16pt;
+      font-weight: 700;
+      color: #1a365d;
+      letter-spacing: 0.5pt;
+    }
+
+    .header-subtitle {
+      font-size: 8pt;
+      color: #4a5568;
+      letter-spacing: 1pt;
+      text-transform: uppercase;
+      margin-top: 0.1cm;
+    }
+
+    /* ---------------------------------------------------------------
+       Section headings
+       --------------------------------------------------------------- */
+    .section-title {
+      font-size: 11pt;
+      font-weight: 700;
+      color: #1a365d;
+      border-bottom: 0.5pt solid #cbd5e0;
+      padding-bottom: 0.15cm;
+      margin-top: 0.5cm;
+      margin-bottom: 0.3cm;
+    }
+
+    /* ---------------------------------------------------------------
+       Tables
+       --------------------------------------------------------------- */
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-bottom: 0.4cm;
+      font-size: 8pt;
+    }
+
+    th {
+      background-color: #edf2f7;
+      color: #1a365d;
+      font-weight: 700;
+      text-align: left;
+      padding: 0.15cm 0.2cm;
+      border: 0.5pt solid #cbd5e0;
+    }
+
+    td {
+      padding: 0.12cm 0.2cm;
+      border: 0.5pt solid #cbd5e0;
+      vertical-align: top;
+    }
+
+    th.numeric,
+    td.numeric {
+      text-align: right;
+    }
+
+    th.center,
+    td.center {
+      text-align: center;
+    }
+
+    /* ---------------------------------------------------------------
+       Info grid (two-column key-value layout)
+       --------------------------------------------------------------- */
+    .info-grid {
+      display: table;
+      width: 100%;
+      margin-bottom: 0.4cm;
+    }
+
+    .info-row {
+      display: table-row;
+    }
+
+    .info-label {
+      display: table-cell;
+      width: 30%;
+      font-weight: 700;
+      color: #4a5568;
+      padding: 0.08cm 0.2cm;
+      font-size: 8.5pt;
+    }
+
+    .info-value {
+      display: table-cell;
+      width: 70%;
+      padding: 0.08cm 0.2cm;
+      font-size: 8.5pt;
+    }
+
+    /* ---------------------------------------------------------------
+       Score summary panel
+       --------------------------------------------------------------- */
+    .score-panel {
+      border: 1pt solid #1a365d;
+      padding: 0.3cm;
+      margin-bottom: 0.4cm;
+      background-color: #f7fafc;
+    }
+
+    .score-panel table {
+      margin-bottom: 0;
+    }
+
+    .score-panel th {
+      background-color: #1a365d;
+      color: #ffffff;
+    }
+
+    .score-highlight {
+      font-weight: 700;
+      font-size: 10pt;
+      color: #1a365d;
+    }
+
+    /* ---------------------------------------------------------------
+       Placeholder / empty state
+       --------------------------------------------------------------- */
+    .placeholder {
+      color: #a0aec0;
+      font-style: italic;
+      padding: 0.2cm 0;
+      font-size: 8.5pt;
+    }
+
+    /* ---------------------------------------------------------------
+       Signatures
+       --------------------------------------------------------------- */
+    .signature-block {
+      margin-bottom: 0.3cm;
+      padding: 0.2cm;
+      border: 0.5pt solid #e2e8f0;
+    }
+
+    /* ---------------------------------------------------------------
+       Generated-at footer
+       --------------------------------------------------------------- */
+    .generated-at {
+      margin-top: 0.5cm;
+      font-size: 7pt;
+      color: #a0aec0;
+      text-align: right;
+    }
+
+    /* ---------------------------------------------------------------
+       Page break helpers
+       --------------------------------------------------------------- */
+    .page-break-before {
+      page-break-before: always;
+    }
+
+    .avoid-break {
+      page-break-inside: avoid;
+    }
+  </style>
+  {% block extra_styles %}{% endblock %}
+</head>
+<body>
+  <!-- Header -->
+  <div class="header">
+    <img
+      src="{{ logo_b64 }}"
+      alt="Minerals Commission Ghana"
+      class="header-logo"
+    />
+    <div class="header-text">
+      <div class="header-org-name">MINCOM</div>
+      <div class="header-subtitle">Employee Performance Appraisal System</div>
+    </div>
+  </div>
+
+  {% block content %}{% endblock %}
+
+  {% block footer %}
+  <div class="generated-at">
+    Generated: {{ generated_at }}
+  </div>
+  {% endblock %}
+
+  <!-- Running footer (page X of Y + system name), drawn on every page.
+       dompdf's replacement for WeasyPrint's @bottom-center/@bottom-right
+       margin boxes, which it doesn't support — see the @page comment
+       above. Runs once per page via PdfRenderer's setIsPhpEnabled(true);
+       this script is a fixed string in our own template, never built
+       from request/database data. -->
+  <script type="text/php">
+    if (isset($pdf)) {
+        $font = $fontMetrics->getFont("Arial", "normal");
+        $size = 7;
+        $color = [0.443, 0.478, 0.588]; // #718096
+
+        $footerY = $pdf->get_height() - 34;
+
+        $left = "MINCOM Employee Performance Appraisal System";
+        $pdf->page_text(56.7, $footerY, $left, $font, $size, $color);
+
+        // "{PAGE_NUM}"/"{PAGE_COUNT}" are literal tokens page_text()
+        // substitutes itself once per page, at final-render time when
+        // the true page count is known — NOT PHP variable
+        // interpolation. Interpolating $PAGE_NUM/$PAGE_COUNT here
+        // instead would bake in whatever page this <script> tag itself
+        // happens to land on (typically the last), printing that same
+        // baked string on every page instead of the real per-page
+        // number. Width is estimated against a worst-case "Page 99 of
+        // 99" so the right edge stays put regardless of actual digit
+        // count, at the cost of a little extra whitespace for shorter
+        // numbers.
+        $right = "Page {PAGE_NUM} of {PAGE_COUNT}";
+        $rightWidth = $fontMetrics->getTextWidth("Page 99 of 99", $font, $size);
+        $pdf->page_text($pdf->get_width() - 56.7 - $rightWidth, $footerY, $right, $font, $size, $color);
+    }
+  </script>
+</body>
+</html>

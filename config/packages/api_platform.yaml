@@ -1,0 +1,22 @@
+api_platform:
+    title: MINCOM Appraisal API
+    version: 1.0.0
+    # JSON-only: no Hydra/JSON-LD. The response envelope (status/data/meta) and error
+    # shape are reproduced by our own EnvelopeResponseSubscriber / ExceptionSubscriber,
+    # not by API Platform's own Hydra/Problem-Details formats.
+    formats:
+        json: ['application/json']
+    # API Platform's PATCH default only accepts RFC 7396
+    # application/merge-patch+json; our frontend (plain axios .patch())
+    # sends application/json like every other request, matching DRF's
+    # behaviour — so PATCH must accept the same format as everything else.
+    patch_formats:
+        json: ['application/json']
+    docs_formats:
+        json: ['application/json']
+    error_formats:
+        json: ['application/json']
+    defaults:
+        stateless: true
+        cache_headers:
+            vary: ['Content-Type', 'Authorization', 'Origin']

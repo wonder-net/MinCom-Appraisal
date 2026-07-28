@@ -1,0 +1,7 @@
+gesdinet_jwt_refresh_token:
+    # Custom entity adds session_start, needed to enforce the absolute session
+    # timeout across refresh-token rotation (see App\Entity\RefreshToken).
+    refresh_token_class: App\Entity\RefreshToken
+    ttl: '%env(int:JWT_REFRESH_TOKEN_TTL)%'
+    ttl_update: false
+    single_use: true

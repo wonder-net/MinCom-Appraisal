@@ -1,0 +1,11 @@
+.git
+.gitignore
+.env.local
+.env.*.local
+config/jwt/*.pem
+var/
+vendor/
+node_modules/
+tests/
+docker-compose.yml
+README.md

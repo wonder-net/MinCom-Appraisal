@@ -1,0 +1,61 @@
+# Mirrors Django's DEFAULT_THROTTLE_RATES (backend/config/settings/base.py:
+# anon 20/min, user 200/min, auth 10/min, bulk_import_user_create 10/hour,
+# bulk_import_user_commit 20/hour). Applied by App\EventListener\RateLimitListener,
+# which resolves the scope per-route (mirroring each Django view's
+# throttle_scope) and keys by user id when authenticated, else client IP
+# (mirroring DRF's ScopedRateThrottle ident resolution).
+#
+# Storage defaults to the `cache.rate_limiter` pool (backed by `cache.app`,
+# filesystem in dev) — fine for a single app server; point `cache.app` at
+# Redis in production so limits are shared correctly across workers.
+framework:
+    rate_limiter:
+        anon:
+            policy: 'fixed_window'
+            limit: 20
+            interval: '1 minute'
+        user:
+            policy: 'fixed_window'
+            limit: 200
+            interval: '1 minute'
+        auth:
+            policy: 'fixed_window'
+            limit: 10
+            interval: '1 minute'
+        bulk_import_user_create:
+            policy: 'fixed_window'
+            limit: 10
+            interval: '1 hour'
+        bulk_import_user_commit:
+            policy: 'fixed_window'
+            limit: 20
+            interval: '1 hour'
+
+# Functional tests hammer auth/bulk-import endpoints far more than 10-20
+# times per run (many independent test methods, no shared time window),
+# so the dev/prod limits above would throttle the test suite itself
+# rather than exercising real abuse. Limits stay wired (RateLimitListener
+# still runs) at a ceiling no legitimate test run should reach.
+when@test:
+    framework:
+        rate_limiter:
+            anon:
+                policy: 'fixed_window'
+                limit: 100000
+                interval: '1 minute'
+            user:
+                policy: 'fixed_window'
+                limit: 100000
+                interval: '1 minute'
+            auth:
+                policy: 'fixed_window'
+                limit: 100000
+                interval: '1 minute'
+            bulk_import_user_create:
+                policy: 'fixed_window'
+                limit: 100000
+                interval: '1 hour'
+            bulk_import_user_commit:
+                policy: 'fixed_window'
+                limit: 100000
+                interval: '1 hour'

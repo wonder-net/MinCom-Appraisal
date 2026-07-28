@@ -1,0 +1,49 @@
+{% extends "emails/base_email.html.twig" %}
+{% block body %}
+<p style="margin: 0 0 16px 0; font-size: 15px; color: #2d3748; line-height: 1.6;">
+  Dear {{ recipient_name }},
+</p>
+<p style="margin: 0 0 16px 0; font-size: 15px; color: #2d3748; line-height: 1.6;">
+  {% if is_own_appraisal %}Your{% else %}The{% endif %} performance appraisal {% if not is_own_appraisal %}for {{ employee_name }} {% endif %}(<strong>{{ cycle_period }}</strong>) is now pending your sign-off.
+</p>
+<p style="margin: 0 0 16px 0; font-size: 15px; color: #2d3748; line-height: 1.6;">
+  Please review the completed appraisal and choose one of the following actions:
+</p>
+<table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%" style="margin: 0 0 16px 0;">
+  <tr>
+    <td style="padding: 8px 0;">
+      <table role="presentation" cellpadding="0" cellspacing="0" border="0">
+        <tr>
+          <td style="width: 24px; vertical-align: top; padding-top: 2px;">
+            <span style="font-size: 14px; color: #38a169; font-weight: bold;">&#10003;</span>
+          </td>
+          <td style="font-size: 15px; color: #2d3748; line-height: 1.6;">
+            <strong>ACCEPT</strong> &mdash; Sign off on the appraisal as final.
+          </td>
+        </tr>
+      </table>
+    </td>
+  </tr>
+  <tr>
+    <td style="padding: 8px 0;">
+      <table role="presentation" cellpadding="0" cellspacing="0" border="0">
+        <tr>
+          <td style="width: 24px; vertical-align: top; padding-top: 2px;">
+            <span style="font-size: 14px; color: #e53e3e; font-weight: bold;">&#10007;</span>
+          </td>
+          <td style="font-size: 15px; color: #2d3748; line-height: 1.6;">
+            <strong>REJECT</strong> &mdash; Raise a dispute for further discussion.
+          </td>
+        </tr>
+      </table>
+    </td>
+  </tr>
+</table>
+<table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%">
+  <tr>
+    <td align="center" style="padding: 8px 0 24px 0;">
+      <a href="{{ appraisal_url }}" style="display: inline-block; padding: 12px 32px; background-color: #1a365d; color: #ffffff; font-size: 14px; font-weight: 600; text-decoration: none; border-radius: 6px;">Review and Sign Appraisal</a>
+    </td>
+  </tr>
+</table>
+{% endblock body %}

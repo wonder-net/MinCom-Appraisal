@@ -1,0 +1,289 @@
+{% extends "pdf/base_pdf.html.twig" %}
+
+{% block title %}Performance Appraisal — {{ employee_name }} — {{ cycle_year }}{% endblock %}
+
+{% block content %}
+<!-- ===== Employee Information ===== -->
+<h2 class="section-title">Employee Information</h2>
+<div class="info-grid">
+  <div class="info-row">
+    <div class="info-label">Employee Name</div>
+    <div class="info-value">{{ employee_name }}</div>
+  </div>
+  <div class="info-row">
+    <div class="info-label">Employee ID</div>
+    <div class="info-value">{{ employee_id }}</div>
+  </div>
+  <div class="info-row">
+    <div class="info-label">Job Title</div>
+    <div class="info-value">{{ job_title }}</div>
+  </div>
+  <div class="info-row">
+    <div class="info-label">Department</div>
+    <div class="info-value">{{ department_name }}</div>
+  </div>
+</div>
+
+<!-- ===== Cycle Period ===== -->
+<h2 class="section-title">Appraisal Cycle</h2>
+<div class="info-grid">
+  <div class="info-row">
+    <div class="info-label">Cycle</div>
+    <div class="info-value">{{ cycle_name }}</div>
+  </div>
+  <div class="info-row">
+    <div class="info-label">Year</div>
+    <div class="info-value">{{ cycle_year }}</div>
+  </div>
+  <div class="info-row">
+    <div class="info-label">Period</div>
+    <div class="info-value">{{ cycle_start }} to {{ cycle_end }}</div>
+  </div>
+</div>
+
+<!-- ===== Key Deliverables by BSC Perspective ===== -->
+<h2 class="section-title">Key Deliverables</h2>
+{% if key_deliverables %}
+<table>
+  <thead>
+    <tr>
+      <th style="width: 5%;">#</th>
+      <th style="width: 30%;">Description</th>
+      <th style="width: 18%;">BSC Perspective</th>
+      <th class="numeric" style="width: 10%;">Weight</th>
+      <th class="numeric" style="width: 12%;">Self Rating</th>
+      <th class="numeric" style="width: 12%;">Manager Rating</th>
+      <th class="numeric" style="width: 13%;">Weighted Score</th>
+    </tr>
+  </thead>
+  <tbody>
+    {% for kd in key_deliverables %}
+    <tr>
+      <td class="center">{{ loop.index }}</td>
+      <td>{{ kd.description }}</td>
+      <td>{{ kd.bsc_perspective }}</td>
+      <td class="numeric">{{ kd.weight }}</td>
+      <td class="numeric">{% if kd.self_rating is not none %}{{ kd.self_rating }}{% else %}&mdash;{% endif %}</td>
+      <td class="numeric">{% if kd.manager_rating is not none %}{{ kd.manager_rating }}{% else %}&mdash;{% endif %}</td>
+      <td class="numeric">{% if kd.weighted_score is not none %}{{ kd.weighted_score }}{% else %}&mdash;{% endif %}</td>
+    </tr>
+    {% endfor %}
+  </tbody>
+</table>
+{% else %}
+<p class="placeholder">No key deliverables recorded.</p>
+{% endif %}
+
+<!-- ===== Competency Ratings ===== -->
+<h2 class="section-title">Behavioural Competency Ratings</h2>
+{% if competency_ratings %}
+<table>
+  <thead>
+    <tr>
+      <th style="width: 5%;">#</th>
+      <th style="width: 65%;">Competency</th>
+      <th class="numeric" style="width: 15%;">Self Rating</th>
+      <th class="numeric" style="width: 15%;">Manager Rating</th>
+    </tr>
+  </thead>
+  <tbody>
+    {% for cr in competency_ratings %}
+    <tr>
+      <td class="center">{{ loop.index }}</td>
+      <td>{{ cr.competency_name }}</td>
+      <td class="numeric">{% if cr.self_rating is not none %}{{ cr.self_rating }}{% else %}&mdash;{% endif %}</td>
+      <td class="numeric">{% if cr.manager_rating is not none %}{{ cr.manager_rating }}{% else %}&mdash;{% endif %}</td>
+    </tr>
+    {% endfor %}
+  </tbody>
+</table>
+<p style="font-size: 8pt; color: #6b7280; margin-top: 0.15cm;">
+  Competencies are averaged (not weighted) — the Behavioural Competency
+  Average score is the mean of the Manager Ratings above. See the Score
+  Summary panel below for the final average.
+</p>
+{% else %}
+<p class="placeholder">No competency ratings recorded.</p>
+{% endif %}
+
+<!-- ===== Score Summary ===== -->
+<h2 class="section-title">Score Summary</h2>
+<div class="score-panel avoid-break">
+  <table>
+    <thead>
+      <tr>
+        <th style="width: 50%;">Component</th>
+        <th class="numeric" style="width: 25%;">Score</th>
+        <th style="width: 25%;">Descriptor</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td>Key Deliverables Average (70% weight)</td>
+        <td class="numeric">{% if kd_average is not none %}{{ kd_average }}{% else %}&mdash;{% endif %}</td>
+        <td>{% if kd_descriptor %}{{ kd_descriptor }}{% else %}&mdash;{% endif %}</td>
+      </tr>
+      <tr>
+        <td>Behavioural Competency Average (30% weight)</td>
+        <td class="numeric">{% if competency_average is not none %}{{ competency_average }}{% else %}&mdash;{% endif %}</td>
+        <td>{% if bc_descriptor %}{{ bc_descriptor }}{% else %}&mdash;{% endif %}</td>
+      </tr>
+      <tr>
+        <td><span class="score-highlight">Total Score</span></td>
+        <td class="numeric"><span class="score-highlight">{% if total_score is not none %}{{ total_score }}{% else %}&mdash;{% endif %}</span></td>
+        <td><span class="score-highlight">{{ performance_descriptor }}</span></td>
+      </tr>
+    </tbody>
+  </table>
+</div>
+
+<!-- ===== Growth Plan ===== -->
+<h2 class="section-title">Growth Plan</h2>
+{% if growth_plan %}
+<div class="avoid-break">
+  <div class="info-grid">
+    <div class="info-row">
+      <div class="info-label">Overall Assessment</div>
+      <div class="info-value">{{ growth_plan.overall_assessment|default('—') }}</div>
+    </div>
+  </div>
+
+  {% if growth_plan.strengths %}
+  <h3 style="font-size: 9pt; font-weight: 700; color: #2d3748; margin-top: 0.2cm; margin-bottom: 0.15cm;">Strengths</h3>
+  <table>
+    <thead>
+      <tr>
+        <th style="width: 5%;">#</th>
+        <th>Description</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for item in growth_plan.strengths %}
+      <tr>
+        <td class="center">{{ loop.index }}</td>
+        <td>{{ item }}</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  {% endif %}
+
+  {% if growth_plan.weaknesses %}
+  <h3 style="font-size: 9pt; font-weight: 700; color: #2d3748; margin-top: 0.2cm; margin-bottom: 0.15cm;">Areas for Improvement</h3>
+  <table>
+    <thead>
+      <tr>
+        <th style="width: 5%;">#</th>
+        <th>Description</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for item in growth_plan.weaknesses %}
+      <tr>
+        <td class="center">{{ loop.index }}</td>
+        <td>{{ item }}</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  {% endif %}
+
+  {% if growth_plan.training_needs %}
+  <h3 style="font-size: 9pt; font-weight: 700; color: #2d3748; margin-top: 0.2cm; margin-bottom: 0.15cm;">Training Needs</h3>
+  <table>
+    <thead>
+      <tr>
+        <th style="width: 5%;">#</th>
+        <th>Description</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for item in growth_plan.training_needs %}
+      <tr>
+        <td class="center">{{ loop.index }}</td>
+        <td>{{ item }}</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  {% endif %}
+
+  {% if growth_plan.career_plans %}
+  <h3 style="font-size: 9pt; font-weight: 700; color: #2d3748; margin-top: 0.2cm; margin-bottom: 0.15cm;">Career Plans</h3>
+  <table>
+    <thead>
+      <tr>
+        <th style="width: 5%;">#</th>
+        <th>Description</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for item in growth_plan.career_plans %}
+      <tr>
+        <td class="center">{{ loop.index }}</td>
+        <td>{{ item }}</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  {% endif %}
+
+  {% if growth_plan.development_needs %}
+  <h3 style="font-size: 9pt; font-weight: 700; color: #2d3748; margin-top: 0.2cm; margin-bottom: 0.15cm;">Development Needs</h3>
+  <table>
+    <thead>
+      <tr>
+        <th style="width: 5%;">#</th>
+        <th>Description</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for item in growth_plan.development_needs %}
+      <tr>
+        <td class="center">{{ loop.index }}</td>
+        <td>{{ item }}</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  {% endif %}
+</div>
+{% else %}
+<p class="placeholder">Not yet completed.</p>
+{% endif %}
+
+<!-- ===== Signatures ===== -->
+<h2 class="section-title">Signatures</h2>
+{% if signatures %}
+{% for sig in signatures %}
+<div class="signature-block avoid-break">
+  <div class="info-grid">
+    <div class="info-row">
+      <div class="info-label">Name</div>
+      <div class="info-value">{{ sig.signer_name }}</div>
+    </div>
+    <div class="info-row">
+      <div class="info-label">Role</div>
+      <div class="info-value">{{ sig.signer_role }}</div>
+    </div>
+    <div class="info-row">
+      <div class="info-label">Action</div>
+      <div class="info-value">{{ sig.action }}</div>
+    </div>
+    {% if sig.reason %}
+    <div class="info-row">
+      <div class="info-label">Reason</div>
+      <div class="info-value">{{ sig.reason }}</div>
+    </div>
+    {% endif %}
+    <div class="info-row">
+      <div class="info-label">Date</div>
+      <div class="info-value">{{ sig.signed_at }}</div>
+    </div>
+  </div>
+</div>
+{% endfor %}
+{% else %}
+<p class="placeholder">No signatures recorded.</p>
+{% endif %}
+{% endblock %}

@@ -1,0 +1,151 @@
+# symfony-backend/docker-compose.prod.yml — single-VM Docker Compose
+# deployment. Run alongside docker-compose.yml's shared network/volume
+# declarations are NOT reused on purpose (this is a fully separate stack,
+# not an override file) — deploy with:
+#
+#   docker compose -f docker-compose.prod.yml up -d --build
+#
+# Prerequisites on the VM before first start:
+#   1. Copy .env.prod.local.dist to .env.prod.local and fill in every
+#      value (see that file for exact generation commands). This file
+#      never leaves the VM and is never baked into the image.
+#   2. Generate the JWT keypair into the jwt_keys volume (one-time,
+#      idempotent — --overwrite only if rotating):
+#        docker compose -f docker-compose.prod.yml run --rm php \
+#          php bin/console lexik:jwt:generate-keypair
+#
+# `db`/`redis` are bundled here for a simple single-VM setup. If using an
+# external managed Postgres/Redis instead, delete those two services and
+# point DATABASE_URL/MESSENGER_TRANSPORT_DSN in .env.prod.local at them —
+# nothing else in this file needs to change.
+#
+# App\Service\ProductionConfigValidator (Kernel::boot()) refuses to boot
+# if .env.prod.local is missing/incomplete, so a misconfigured deploy
+# fails immediately and loudly instead of silently running insecure.
+
+networks:
+  symfony_prod:
+    driver: bridge
+
+volumes:
+  symfony_prod_postgres_data:
+  symfony_prod_redis_data:
+  # Persisted across container recreation — the private key must survive
+  # deploys, or every deploy would invalidate every issued JWT.
+  jwt_keys:
+
+services:
+  nginx:
+    image: nginx:alpine
+    volumes:
+      - ./docker/nginx/default.conf:/etc/nginx/conf.d/default.conf:ro
+      - ./public:/app/public:ro
+    ports:
+      - "8081:8080"
+    depends_on:
+      php:
+        condition: service_healthy
+    networks:
+      - symfony_prod
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://127.0.0.1:8080/ > /dev/null 2>&1 || true"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
+
+  php:
+    build:
+      context: .
+      dockerfile: docker/php/Dockerfile
+      target: prod
+    image: mincom-symfony-backend:prod
+    env_file:
+      - .env.prod.local
+    volumes:
+      - jwt_keys:/app/config/jwt
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    networks:
+      - symfony_prod
+    user: "1001:1001"
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "php-fpm-healthcheck || true"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 30s
+
+  messenger-consume-scheduler:
+    image: mincom-symfony-backend:prod
+    # --time-limit/--memory-limit: recycle the worker periodically
+    # (Docker's `restart: unless-stopped` immediately relaunches it) —
+    # standard practice for long-running PHP workers, guards against
+    # slow memory growth across days/weeks of uptime.
+    command: php bin/console messenger:consume async scheduler_main --time-limit=3600 --memory-limit=128M -vv
+    env_file:
+      - .env.prod.local
+    volumes:
+      - jwt_keys:/app/config/jwt
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    networks:
+      - symfony_prod
+    user: "1001:1001"
+    restart: unless-stopped
+
+  messenger-consume-notifications:
+    image: mincom-symfony-backend:prod
+    command: php bin/console messenger:consume notification_email --time-limit=3600 --memory-limit=128M -vv
+    env_file:
+      - .env.prod.local
+    volumes:
+      - jwt_keys:/app/config/jwt
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    networks:
+      - symfony_prod
+    user: "1001:1001"
+    restart: unless-stopped
+
+  db:
+    image: postgres:16-alpine
+    env_file:
+      - .env.prod.local
+    networks:
+      - symfony_prod
+    volumes:
+      - symfony_prod_postgres_data:/var/lib/postgresql/data
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $$POSTGRES_USER -d $$POSTGRES_DB"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 20s
+
+  redis:
+    image: redis:7-alpine
+    command: redis-server --save 60 1 --loglevel warning
+    networks:
+      - symfony_prod
+    volumes:
+      - symfony_prod_redis_data:/data
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s

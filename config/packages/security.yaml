@@ -1,0 +1,86 @@
+security:
+    # https://symfony.com/doc/current/security.html#registering-the-user-hashing-passwords
+    password_hashers:
+        Symfony\Component\Security\Core\User\PasswordAuthenticatedUserInterface: 'auto'
+
+    # https://symfony.com/doc/current/security.html#loading-the-user-the-user-provider
+    providers:
+        app_user_provider:
+            entity:
+                class: App\Entity\User
+                property: email
+
+    firewalls:
+        dev:
+            # Ensure dev tools and static assets are always allowed
+            pattern: ^/(_profiler|_wdt|assets|build)/
+            security: false
+        admin:
+            # Session-based, not stateless: the admin panel (EasyAdmin) is
+            # a server-rendered Twig UI for ops/support staff, not an API
+            # client — mirrors Django admin's own separate session-cookie
+            # auth, distinct from the API's JWT flow below. No MFA gate
+            # here either, matching Django admin's actual behaviour (its
+            # login view is plain email+password, not wired into the same
+            # MFA flow as the API).
+            pattern: ^/admin
+            lazy: true
+            provider: app_user_provider
+            form_login:
+                login_path: admin_login
+                check_path: admin_login
+                enable_csrf: true
+                # A dedicated token id, deliberately NOT named
+                # "authenticate" — config/packages/csrf.yaml marks
+                # "authenticate" as a *stateless* (cookie-derived) CSRF
+                # token id for the stateless JWT API's own forms, which
+                # is the wrong strategy for this session-based firewall.
+                # Using our own id keeps this form on ordinary
+                # session-stored CSRF tokens.
+                csrf_token_id: admin_authenticate
+                default_target_path: admin
+            logout:
+                path: admin_logout
+                target: admin_login
+        main:
+            lazy: true
+            stateless: true
+            provider: app_user_provider
+            # Bearer-token auth for every protected route. Login/refresh
+            # themselves are plain controllers that never touch this
+            # authenticator (see plan: RPC-shaped auth endpoints bypass
+            # Security entirely and mint tokens directly).
+            jwt: ~
+
+            # https://symfony.com/doc/current/security/impersonating_user.html
+            # switch_user: true
+
+    # Note: Only the *first* matching rule is applied
+    access_control:
+        - { path: ^/admin/login, roles: PUBLIC_ACCESS }
+        # Mirrors Django admin's is_staff gate, narrowed to this port's
+        # admin-tier roles (see RoleHierarchyVoter::IS_ADMIN / User::hasAdminRole) —
+        # HR_ADMIN and SYSTEM_ADMIN are the only roles with an
+        # ops/support surface in Django either. ROLE_SUPERUSER (see
+        # User::isSuperuser()) additionally admits the narrow,
+        # investigative-only account app:bootstrap-superuser creates —
+        # it unlocks /admin ONLY, not any business-RBAC-gated endpoint.
+        - { path: ^/admin, roles: [ROLE_HR_ADMIN, ROLE_SYSTEM_ADMIN, ROLE_SUPERUSER] }
+        - { path: ^/api/v1/health/, roles: PUBLIC_ACCESS }
+        - { path: ^/api/v1/auth/login/, roles: PUBLIC_ACCESS }
+        - { path: ^/api/v1/auth/token/refresh/, roles: PUBLIC_ACCESS }
+        - { path: ^/api/v1/auth/password/reset/request/, roles: PUBLIC_ACCESS }
+        - { path: ^/api/v1/auth/password/reset/confirm/, roles: PUBLIC_ACCESS }
+        - { path: ^/api/v1/auth/mfa/verify-login/, roles: PUBLIC_ACCESS }
+        - { path: ^/api/v1/, roles: IS_AUTHENTICATED_FULLY }
+
+when@test:
+    security:
+        password_hashers:
+            # Password hashers are resource-intensive by design to ensure security.
+            # In tests, it's safe to reduce their cost to improve performance.
+            Symfony\Component\Security\Core\User\PasswordAuthenticatedUserInterface:
+                algorithm: auto
+                cost: 4 # Lowest possible value for bcrypt
+                time_cost: 3 # Lowest possible value for argon
+                memory_cost: 10 # Lowest possible value for argon
