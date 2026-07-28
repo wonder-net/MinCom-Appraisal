@@ -1,0 +1,36 @@
+{% extends "emails/base_email.html.twig" %}
+{% block body %}
+<p style="margin: 0 0 16px 0; font-size: 15px; color: #2d3748; line-height: 1.6;">
+  Dear {{ recipient_name }},
+</p>
+<p style="margin: 0 0 16px 0; font-size: 15px; color: #2d3748; line-height: 1.6;">
+  Your user bulk import has finished processing.
+</p>
+<table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%" style="margin: 0 0 16px 0;">
+  <tr>
+    <td style="padding: 16px; background-color: #f7fafc; border-radius: 6px; border: 1px solid #e2e8f0;">
+      <p style="margin: 0 0 8px 0; font-size: 14px; color: #4a5568;">
+        <strong>Status:</strong> {{ status_label }}
+      </p>
+      <p style="margin: 0 0 8px 0; font-size: 14px; color: #4a5568;">
+        <strong>Total rows:</strong> {{ total_rows }}
+      </p>
+      <p style="margin: 0 0 8px 0; font-size: 14px; color: #4a5568;">
+        <strong>Created:</strong> {{ created_count }} user{{ created_count == 1 ? '' : 's' }}
+      </p>
+      {% if failed_count > 0 %}
+      <p style="margin: 0; font-size: 14px; color: #e53e3e;">
+        <strong>Failed:</strong> {{ failed_count }} row{{ failed_count == 1 ? '' : 's' }}
+      </p>
+      {% endif %}
+    </td>
+  </tr>
+</table>
+<table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%">
+  <tr>
+    <td align="center" style="padding: 0 0 24px 0;">
+      <a href="{{ results_url }}" style="display: inline-block; padding: 12px 32px; background-color: #1a365d; color: #ffffff; font-size: 14px; font-weight: 600; text-decoration: none; border-radius: 6px;">View Results</a>
+    </td>
+  </tr>
+</table>
+{% endblock body %}

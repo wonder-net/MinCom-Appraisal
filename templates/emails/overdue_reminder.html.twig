@@ -1,0 +1,22 @@
+{% extends "emails/base_email.html.twig" %}
+{% block body %}
+<p style="margin: 0 0 16px 0; font-size: 15px; color: #2d3748; line-height: 1.6;">
+  Dear {{ recipient_name }},
+</p>
+<p style="margin: 0 0 16px 0; font-size: 15px; color: #2d3748; line-height: 1.6;">
+  This is a reminder that your action on {% if is_own_appraisal %}your{% else %}the{% endif %} performance appraisal {% if not is_own_appraisal %}for {{ employee_name }} {% endif %}(<strong>{{ cycle_period }}</strong>) is overdue.
+</p>
+<p style="margin: 0 0 16px 0; font-size: 15px; color: #2d3748; line-height: 1.6;">
+  The current appraisal status is: <strong>{{ appraisal_status }}</strong>.
+</p>
+<p style="margin: 0 0 24px 0; font-size: 15px; color: #2d3748; line-height: 1.6;">
+  Please complete your pending action as soon as possible to keep the appraisal process on track.
+</p>
+<table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%">
+  <tr>
+    <td align="center" style="padding: 0 0 24px 0;">
+      <a href="{{ appraisal_url }}" style="display: inline-block; padding: 12px 32px; background-color: #c53030; color: #ffffff; font-size: 14px; font-weight: 600; text-decoration: none; border-radius: 6px;">Take Action Now</a>
+    </td>
+  </tr>
+</table>
+{% endblock body %}

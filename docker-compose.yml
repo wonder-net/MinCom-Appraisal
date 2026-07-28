@@ -1,0 +1,179 @@
+# symfony-backend/docker-compose.yml — isolated local dev environment for the
+# Symfony rewrite. Fully separate from the root docker-compose*.yml (Django
+# stack): own network, own Postgres/Redis instances, distinct host ports, so
+# both stacks can run side by side during development. Not wired into the
+# Django nginx or shared by any volume/network — see the migration plan
+# (build-in-isolation, single cutover at the end).
+#
+# NOTE: written for future container-based use; not exercised in an
+# environment without Docker installed. Verify on first real use.
+
+networks:
+  symfony_internal:
+    driver: bridge
+
+volumes:
+  symfony_postgres_data:
+  symfony_redis_data:
+
+services:
+  nginx:
+    image: nginx:alpine
+    volumes:
+      - ./docker/nginx/default.conf:/etc/nginx/conf.d/default.conf:ro
+      - ./public:/app/public:ro
+    ports:
+      - "8081:8080"
+    depends_on:
+      php:
+        condition: service_healthy
+    networks:
+      - symfony_internal
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://127.0.0.1:8080/ > /dev/null 2>&1 || true"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
+
+  php:
+    build:
+      context: .
+      dockerfile: docker/php/Dockerfile
+      target: dev
+    image: mincom-symfony-backend:dev
+    env_file:
+      - path: .env.local
+        required: false
+    environment:
+      - APP_ENV=dev
+      - DATABASE_URL=postgresql://mincom_symfony:devpassword@db:5432/mincom_appraisal_symfony?serverVersion=16&charset=utf8
+      - MESSENGER_TRANSPORT_DSN=redis://redis:6379/messages
+      # mailpit catches all outbound mail here — web UI at localhost:8026.
+      - MAILER_DSN=smtp://mailpit:1025
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    networks:
+      - symfony_internal
+    volumes:
+      - .:/app
+    user: "1001:1001"
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "php-fpm-healthcheck || true"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 30s
+
+  messenger-consume-scheduler:
+    build:
+      context: .
+      dockerfile: docker/php/Dockerfile
+      target: dev
+    image: mincom-symfony-backend:dev
+    # scheduler_main replaces Celery Beat: it dispatches
+    # SendOverdueRemindersMessage on the cron schedule defined in
+    # App\Scheduler\MainSchedule (daily 08:00, matching Django's
+    # CELERY_BEAT_SCHEDULE).
+    command: php bin/console messenger:consume async scheduler_main -vv
+    env_file:
+      - path: .env.local
+        required: false
+    environment:
+      - APP_ENV=dev
+      - DATABASE_URL=postgresql://mincom_symfony:devpassword@db:5432/mincom_appraisal_symfony?serverVersion=16&charset=utf8
+      - MESSENGER_TRANSPORT_DSN=redis://redis:6379/messages
+      - MAILER_DSN=smtp://mailpit:1025
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    networks:
+      - symfony_internal
+    volumes:
+      - .:/app
+    user: "1001:1001"
+    restart: unless-stopped
+
+  messenger-consume-notifications:
+    build:
+      context: .
+      dockerfile: docker/php/Dockerfile
+      target: dev
+    image: mincom-symfony-backend:dev
+    # Consumes SendNotificationEmailMessage (the 16 workflow/escalation/
+    # cycle-activation notification emails) off its own transport — kept
+    # separate from `async` so its retry_strategy (60s/120s/240s,
+    # matching Django's Celery retry) doesn't affect bulk-import messages
+    # on the `async` transport (see config/packages/messenger.yaml).
+    command: php bin/console messenger:consume notification_email -vv
+    env_file:
+      - path: .env.local
+        required: false
+    environment:
+      - APP_ENV=dev
+      - DATABASE_URL=postgresql://mincom_symfony:devpassword@db:5432/mincom_appraisal_symfony?serverVersion=16&charset=utf8
+      - MESSENGER_TRANSPORT_DSN=redis://redis:6379/messages
+      - MAILER_DSN=smtp://mailpit:1025
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    networks:
+      - symfony_internal
+    volumes:
+      - .:/app
+    user: "1001:1001"
+    restart: unless-stopped
+
+  db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: mincom_appraisal_symfony
+      POSTGRES_USER: mincom_symfony
+      POSTGRES_PASSWORD: devpassword
+    ports:
+      - "5434:5432" # distinct from the Django stack's 5433
+    networks:
+      - symfony_internal
+    volumes:
+      - symfony_postgres_data:/var/lib/postgresql/data
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U mincom_symfony -d mincom_appraisal_symfony"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 20s
+
+  redis:
+    image: redis:7-alpine
+    command: redis-server --save 60 1 --loglevel warning
+    ports:
+      - "6380:6379" # distinct from the Django stack's 6379
+    networks:
+      - symfony_internal
+    volumes:
+      - symfony_redis_data:/data
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+
+  mailpit:
+    image: axllent/mailpit:latest
+    ports:
+      - "8026:8025" # distinct from the Django stack's 8025
+    networks:
+      - symfony_internal
+    restart: unless-stopped

@@ -1,0 +1,28 @@
+# Port of Django's Sentry setup (config/settings/base.py): the SDK is
+# always configured, but the DSN is empty by default (.env), and both
+# the Symfony bundle (register_error_listener/register_error_handler,
+# via kernel.exception at priority 128 — runs before our own
+# App\EventListener\ExceptionListener at priority 50, so it always sees
+# the exception regardless of that listener's stopPropagation()) and
+# the underlying PHP SDK (Options::normalizeDsnOption) treat an empty
+# DSN as "disabled, don't send anything" — so dev/test start cleanly
+# with zero Sentry traffic, exactly like Django.
+#
+# No recipe exists for this bundle (sentry/sentry-symfony ships under
+# recipes-contrib, which Flex doesn't auto-apply) — this file, the
+# bundles.php entry, and the .env vars below were all added by hand.
+sentry:
+    dsn: '%env(SENTRY_DSN)%'
+    options:
+        # environment defaults to '%kernel.environment%' (dev/test/prod)
+        # if omitted — no separate ENVIRONMENT env var needed, unlike
+        # Django, which has no equivalent of kernel.environment.
+        release: '%env(default::SENTRY_RELEASE)%'
+        traces_sample_rate: 0.2
+        send_default_pii: false
+        before_send: App\Service\SentryEventScrubber
+        # Django additionally samples profiles (profiles_sample_rate:
+        # 0.1) via sentry-sdk's built-in profiler, which needs no extra
+        # system dependency in Python. The PHP SDK's profiling support
+        # needs the `excimer` PECL extension, which isn't installed —
+        # omitted rather than silently no-op, see README.

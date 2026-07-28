@@ -1,0 +1,35 @@
+
+###> app: re-include committed dotenv templates ###
+# The repo root .gitignore has a blanket `.env` / `.env.*` rule for the
+# Django backend (which never commits env files). This Symfony app follows
+# the opposite, standard Symfony convention instead: `.env`/`.env.test` are
+# committed dev-safe templates (see the "DO NOT DEFINE PRODUCTION SECRETS
+# IN THIS FILE" comment inside `.env` itself); only `.env.local` variants
+# are real and stay ignored below.
+!/.env
+!/.env.test
+!/.env.dev
+# .dist files are templates (no real secrets) meant to be committed —
+# see .env.prod.local.dist itself for what it documents.
+!/.env.prod.local.dist
+###< app ###
+
+###> symfony/framework-bundle ###
+/.env.local
+/.env.local.php
+/.env.*.local
+/config/secrets/prod/prod.decrypt.private.php
+/public/bundles/
+/var/
+/vendor/
+###< symfony/framework-bundle ###
+
+###> lexik/jwt-authentication-bundle ###
+/config/jwt/*.pem
+###< lexik/jwt-authentication-bundle ###
+
+###> phpunit/phpunit ###
+/phpunit.xml
+/.phpunit.cache/
+###< phpunit/phpunit ###
+.DS_Store
