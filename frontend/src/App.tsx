@@ -67,6 +67,8 @@ import {
   ScoreDescriptorConfigPage,
   SelfVsManagerVariancePage,
   NineBoxPage,
+  CalibrationOverviewPage,
+  CalibrationBoardPage,
 } from "@/features/reports";
 import { EmployeeListPage, EmployeeProfilePage } from "@/features/employees";
 import { AuditLogPage } from "@/features/audit";
@@ -348,6 +350,34 @@ export default function App() {
                     fallback={<Navigate to="/unauthorized" replace />}
                   >
                     <NineBoxPage />
+                  </RoleGuard>
+                }
+              />
+              {/* Calibration: view is IS_HR_STAFF-equivalent (no EXECUTIVE —
+                  matches the backend's IS_HR_STAFF gate on both endpoints,
+                  narrower than most other reports here); the Complete/Reopen
+                  actions on the board page are further gated client-side to
+                  HR_ADMIN/SYSTEM_ADMIN only, matching the backend's IS_ADMIN
+                  gate on those two specific endpoints. */}
+              <Route
+                path="calibration"
+                element={
+                  <RoleGuard
+                    roles={["HR_ADMIN", "SYSTEM_ADMIN", "HR_OFFICER"]}
+                    fallback={<Navigate to="/unauthorized" replace />}
+                  >
+                    <CalibrationOverviewPage />
+                  </RoleGuard>
+                }
+              />
+              <Route
+                path="calibration/:departmentId"
+                element={
+                  <RoleGuard
+                    roles={["HR_ADMIN", "SYSTEM_ADMIN", "HR_OFFICER"]}
+                    fallback={<Navigate to="/unauthorized" replace />}
+                  >
+                    <CalibrationBoardPage />
                   </RoleGuard>
                 }
               />

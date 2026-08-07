@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Tests\Functional\Appraisals;
 
 use App\Entity\Appraisal;
+use App\Entity\CalibrationSession;
 use App\Entity\Comment;
 use App\Entity\CompetencyRating;
 use App\Entity\Employee;
@@ -251,6 +252,7 @@ final class WorkflowTransitionTest extends WebTestCase
     {
         $client = static::createClient();
         $appraisal = $this->makeAppraisal(AppraisalStatus::SIGNED_OFF);
+        $this->completeCalibration($appraisal);
         [$client, $accessToken] = $this->loginAsHrAdmin($client);
 
         $client->request('POST', '/api/v1/appraisals/'.$appraisal->getId().'/transition/', server: $this->authHeader($accessToken), content: json_encode([
@@ -398,6 +400,21 @@ final class WorkflowTransitionTest extends WebTestCase
         static::getContainer()->get(EntityManagerInterface::class)->flush();
 
         return $appraisal;
+    }
+
+    /**
+     * Calibration (product roadmap item, see CalibrationSession's
+     * docblock): SIGNED_OFF -> FINALISED now gates on the appraisee's
+     * department having a COMPLETE calibration session for the cycle —
+     * tests exercising that transition need one set up first.
+     */
+    private function completeCalibration(Appraisal $appraisal): void
+    {
+        $em = static::getContainer()->get(EntityManagerInterface::class);
+        $session = new CalibrationSession($appraisal->getCycle(), $appraisal->getEmployee()->getDepartment());
+        $session->markComplete(UserFactory::new()->create(), null);
+        $em->persist($session);
+        $em->flush();
     }
 
     /**

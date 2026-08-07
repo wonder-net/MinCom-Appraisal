@@ -190,6 +190,31 @@ class AppraisalRepository extends ServiceEntityRepository
         return $this->findBy(['cycle' => $cycle, 'status' => AppraisalStatus::SIGNED_OFF]);
     }
 
+    /**
+     * Calibration board (product roadmap item): SIGNED_OFF (awaiting
+     * calibration) and FINALISED (already calibrated, shown for
+     * reference) appraisals for one department in a cycle — DISPUTED/
+     * earlier-stage appraisals aren't calibration-ready yet, so aren't
+     * included.
+     *
+     * @return list<Appraisal>
+     */
+    public function findSignedOffOrFinalisedByCycleAndDepartment(AppraisalCycle $cycle, Department $department): array
+    {
+        return $this->createQueryBuilder('a')
+            ->innerJoin('a.employee', 'e')->addSelect('e')
+            ->leftJoin('e.manager', 'm')->addSelect('m') // nullable — don't drop employees with no manager
+            ->where('a.cycle = :cycle')
+            ->andWhere('e.department = :department')
+            ->andWhere('a.status IN (:statuses)')
+            ->setParameter('cycle', $cycle)
+            ->setParameter('department', $department)
+            ->setParameter('statuses', [AppraisalStatus::SIGNED_OFF, AppraisalStatus::FINALISED])
+            ->orderBy('e.employeeNumber', 'ASC')
+            ->getQuery()
+            ->getResult();
+    }
+
     private function applySearch(QueryBuilder $qb, ?string $search): void
     {
         $search = $search !== null ? substr(trim($search), 0, self::SEARCH_MAX_LENGTH) : '';

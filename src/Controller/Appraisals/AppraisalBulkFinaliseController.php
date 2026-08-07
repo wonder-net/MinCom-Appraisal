@@ -8,6 +8,7 @@ use App\Entity\User;
 use App\Enum\AppraisalStatus;
 use App\Repository\AppraisalRepository;
 use App\Service\AuditService;
+use App\Service\CalibrationService;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\Request;
@@ -39,6 +40,7 @@ final class AppraisalBulkFinaliseController
     public function __construct(
         private readonly AppraisalRepository $appraisals,
         private readonly AuditService $auditService,
+        private readonly CalibrationService $calibration,
         private readonly EntityManagerInterface $em,
     ) {
     }
@@ -77,10 +79,26 @@ final class AppraisalBulkFinaliseController
         $ipAddress = $request->getClientIp();
 
         $finalisedCount = 0;
-        $this->em->wrapInTransaction(function () use ($validIds, $admin, $ipAddress, &$finalisedCount): void {
+        $skippedForCalibration = 0;
+        $this->em->wrapInTransaction(function () use ($validIds, $admin, $ipAddress, &$finalisedCount, &$skippedForCalibration): void {
             $appraisals = $this->appraisals->findBy(['id' => $validIds, 'status' => AppraisalStatus::SIGNED_OFF]);
 
+            // Calibration (product roadmap item, see CalibrationSession's
+            // docblock): this bulk path bypasses TransitionValidator/
+            // WorkflowGuardService entirely (forceStatus(), not a
+            // validated transition), so the gate has to be checked
+            // directly here too — one of three paths to FINALISED, all
+            // three must agree.
+            $toFinalise = [];
             foreach ($appraisals as $appraisal) {
+                if ($this->calibration->isComplete($appraisal)) {
+                    $toFinalise[] = $appraisal;
+                } else {
+                    ++$skippedForCalibration;
+                }
+            }
+
+            foreach ($toFinalise as $appraisal) {
                 $appraisal->forceStatus(AppraisalStatus::FINALISED);
                 $appraisal->setPreviousStatus(AppraisalStatus::SIGNED_OFF);
                 ++$finalisedCount;
@@ -88,7 +106,7 @@ final class AppraisalBulkFinaliseController
 
             $this->em->flush();
 
-            foreach ($appraisals as $appraisal) {
+            foreach ($toFinalise as $appraisal) {
                 $this->auditService->log(
                     'appraisal.finalised',
                     'Appraisal',
@@ -104,6 +122,7 @@ final class AppraisalBulkFinaliseController
         return new JsonResponse([
             'finalised' => $finalisedCount,
             'skipped' => count($validIds) - $finalisedCount,
+            'skipped_for_calibration' => $skippedForCalibration,
         ]);
     }
 }

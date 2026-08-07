@@ -41,6 +41,7 @@ final class WorkflowGuardService
         private readonly StrengthWeaknessRepository $strengthsWeaknesses,
         private readonly TrainingNeedRepository $trainingNeeds,
         private readonly AppraisalAccessChecker $access,
+        private readonly CalibrationService $calibration,
     ) {
     }
 
@@ -55,8 +56,15 @@ final class WorkflowGuardService
             $from === AppraisalStatus::DISCUSSION && $to === AppraisalStatus::GROWTH_PLANNING => $this->discussionToGrowthPlanning($appraisal),
             $from === AppraisalStatus::GROWTH_PLANNING && $to === AppraisalStatus::PENDING_SIGNOFF => $this->growthPlanningToPendingSignoff($appraisal),
             $from === AppraisalStatus::PENDING_SIGNOFF && $to === AppraisalStatus::SIGNED_OFF => $this->pendingSignoffToSignedOff($appraisal),
+            // Calibration (product roadmap item, see CalibrationSession's
+            // docblock): this is one of THREE paths that can reach
+            // FINALISED — AppraisalCycleFinaliseAllController and
+            // AppraisalBulkFinaliseController's own bulk paths carry the
+            // identical CalibrationService::isComplete() check directly,
+            // since neither of them goes through this guard at all.
+            $from === AppraisalStatus::SIGNED_OFF && $to === AppraisalStatus::FINALISED => $this->signedOffToFinalised($appraisal),
             // All other valid transitions have no guard (DISPUTED->DISCUSSION,
-            // SIGNED_OFF->FINALISED, PENDING_SIGNOFF->DISPUTED).
+            // PENDING_SIGNOFF->DISPUTED).
             default => null,
         };
     }
@@ -220,6 +228,18 @@ final class WorkflowGuardService
         return $hasAppraiseeAccept && $acceptedAppraisers >= $requiredAppraisers
             ? null
             : 'The appraisee and every assigned appraiser must sign with ACCEPT before sign-off.';
+    }
+
+    /**
+     * Calibration (product roadmap item, see CalibrationSession's
+     * docblock): the appraisee's department must have a COMPLETE
+     * calibration session for this cycle.
+     */
+    private function signedOffToFinalised(Appraisal $appraisal): ?string
+    {
+        return $this->calibration->isComplete($appraisal)
+            ? null
+            : 'This employee\'s department has not completed calibration for this cycle yet.';
     }
 
     private function absDiffExceeds(string $a, string $b, string $tolerance): bool

@@ -34,6 +34,8 @@ export { CrossCycleTrendPage } from "./pages/CrossCycleTrendPage";
 export { ScoreDescriptorConfigPage } from "./pages/ScoreDescriptorConfigPage";
 export { SelfVsManagerVariancePage } from "./pages/SelfVsManagerVariancePage";
 export { NineBoxPage } from "./pages/NineBoxPage";
+export { CalibrationOverviewPage } from "./pages/CalibrationOverviewPage";
+export { CalibrationBoardPage } from "./pages/CalibrationBoardPage";
 
 // Shared components
 export { DepartmentDrillDown } from "./components/DepartmentDrillDown";

@@ -123,12 +123,12 @@ beforeEach(() => {
 });
 
 describe("ReportsLayout", () => {
-  it("renders all 13 sub-nav links for HR_ADMIN", () => {
+  it("renders all 14 sub-nav links for HR_ADMIN", () => {
     renderLayout();
 
     const nav = screen.getByLabelText("Report pages");
     const links = nav.querySelectorAll("a");
-    expect(links).toHaveLength(13);
+    expect(links).toHaveLength(14);
 
     expect(screen.getByText("Dashboard")).toBeInTheDocument();
     expect(screen.getByText("Unapprised Employees")).toBeInTheDocument();
@@ -143,6 +143,7 @@ describe("ReportsLayout", () => {
     expect(screen.getByText("Trend")).toBeInTheDocument();
     expect(screen.getByText("Rating Variance")).toBeInTheDocument();
     expect(screen.getByText("9-Box Talent Grid")).toBeInTheDocument();
+    expect(screen.getByText("Calibration")).toBeInTheDocument();
   });
 
   it("renders 8 sub-nav links for EXECUTIVE", () => {

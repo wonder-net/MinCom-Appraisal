@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Tests\Functional\Appraisals;
 
 use App\Entity\Appraisal;
+use App\Entity\CalibrationSession;
 use App\Entity\User;
 use App\Enum\AppraisalStatus;
 use App\Enum\RoleName;
@@ -37,6 +38,8 @@ final class AppraisalBulkFinaliseTest extends WebTestCase
         $signedOff2 = AppraisalFactory::new()->create(['cycle' => $cycle, 'status' => AppraisalStatus::SIGNED_OFF]);
         $inDiscussion = AppraisalFactory::new()->create(['cycle' => $cycle, 'status' => AppraisalStatus::DISCUSSION]);
         $this->flush();
+        $this->completeCalibration($signedOff1);
+        $this->completeCalibration($signedOff2);
         [$client, $token] = $this->loginAsHrAdmin($client);
 
         $client->request('POST', self::URL, server: $this->authHeader($token), content: json_encode([
@@ -66,6 +69,7 @@ final class AppraisalBulkFinaliseTest extends WebTestCase
         $cycle = AppraisalCycleFactory::new()->active()->create();
         $appraisal = AppraisalFactory::new()->create(['cycle' => $cycle, 'status' => AppraisalStatus::SIGNED_OFF]);
         $this->flush();
+        $this->completeCalibration($appraisal);
         [$client, $token] = $this->loginAsHrAdmin($client);
 
         $client->request('POST', self::URL, server: $this->authHeader($token), content: json_encode([
@@ -119,6 +123,7 @@ final class AppraisalBulkFinaliseTest extends WebTestCase
         $cycle = AppraisalCycleFactory::new()->active()->create();
         $appraisal = AppraisalFactory::new()->create(['cycle' => $cycle, 'status' => AppraisalStatus::SIGNED_OFF]);
         $this->flush();
+        $this->completeCalibration($appraisal);
         [$client, $token] = $this->loginAsHrAdmin($client);
 
         $id = (string) $appraisal->getId();
@@ -205,5 +210,22 @@ final class AppraisalBulkFinaliseTest extends WebTestCase
     private function flush(): void
     {
         static::getContainer()->get(EntityManagerInterface::class)->flush();
+    }
+
+    /**
+     * Calibration (product roadmap item, see CalibrationSession's
+     * docblock): SIGNED_OFF -> FINALISED now gates on the appraisee's
+     * department having a COMPLETE calibration session for the cycle —
+     * checked directly in this bulk-finalise controller (it bypasses
+     * WorkflowGuardService entirely), so tests exercising a successful
+     * finalise need one set up first.
+     */
+    private function completeCalibration(Appraisal $appraisal): void
+    {
+        $em = static::getContainer()->get(EntityManagerInterface::class);
+        $session = new CalibrationSession($appraisal->getCycle(), $appraisal->getEmployee()->getDepartment());
+        $session->markComplete(UserFactory::new()->create(), null);
+        $em->persist($session);
+        $em->flush();
     }
 }

@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace App\Tests\Functional\Appraisals;
 
+use App\Entity\Appraisal;
+use App\Entity\CalibrationSession;
 use App\Entity\User;
 use App\Enum\AppraisalStatus;
 use App\Enum\RoleName;
@@ -211,9 +213,11 @@ final class AppraisalCycleTest extends WebTestCase
     {
         $client = self::freshClient();
         $cycle = AppraisalCycleFactory::new()->active()->create();
-        AppraisalFactory::new()->create(['cycle' => $cycle, 'status' => AppraisalStatus::SIGNED_OFF]);
-        AppraisalFactory::new()->create(['cycle' => $cycle, 'status' => AppraisalStatus::SIGNED_OFF]);
+        $signedOff1 = AppraisalFactory::new()->create(['cycle' => $cycle, 'status' => AppraisalStatus::SIGNED_OFF]);
+        $signedOff2 = AppraisalFactory::new()->create(['cycle' => $cycle, 'status' => AppraisalStatus::SIGNED_OFF]);
         AppraisalFactory::new()->create(['cycle' => $cycle, 'status' => AppraisalStatus::DISCUSSION]);
+        $this->completeCalibration($signedOff1);
+        $this->completeCalibration($signedOff2);
         [$client, $accessToken] = $this->loginAs(RoleName::HR_ADMIN, $client);
 
         $client->request('POST', self::LIST_URL.$cycle->getId().'/finalise-all/', server: $this->authHeader($accessToken));
@@ -252,6 +256,23 @@ final class AppraisalCycleTest extends WebTestCase
         static::getContainer()->get(EntityManagerInterface::class)->flush();
 
         return $this->login($user, $client);
+    }
+
+    /**
+     * Calibration (product roadmap item, see CalibrationSession's
+     * docblock): SIGNED_OFF -> FINALISED now gates on the appraisee's
+     * department having a COMPLETE calibration session for the cycle —
+     * checked directly in finalise-all (it bypasses WorkflowGuardService
+     * entirely), so tests exercising a successful finalise-all need one
+     * set up first.
+     */
+    private function completeCalibration(Appraisal $appraisal): void
+    {
+        $em = static::getContainer()->get(EntityManagerInterface::class);
+        $session = new CalibrationSession($appraisal->getCycle(), $appraisal->getEmployee()->getDepartment());
+        $session->markComplete(UserFactory::new()->create(), null);
+        $em->persist($session);
+        $em->flush();
     }
 
     /**
