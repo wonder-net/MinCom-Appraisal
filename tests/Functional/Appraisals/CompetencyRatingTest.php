@@ -124,8 +124,12 @@ final class CompetencyRatingTest extends WebTestCase
         $rating = $this->addRating($appraisal);
         [$client, $accessToken] = $this->loginAsAppraisee($client, $appraisal);
 
+        // HR change request #8 rescaled Mincom Core Value ratings to
+        // 1.0-7.5 (was 1.0-5.0) — 5.5 is a valid rating under the new
+        // range, so the out-of-range probe needs to exceed the new max
+        // instead. See CompetencyRatingUpdateController::validateRatingRange().
         $client->request('PATCH', '/api/v1/appraisals/'.$appraisal->getId().'/competencies/'.$rating->getId().'/', server: $this->authHeader($accessToken), content: json_encode([
-            'self_rating' => '5.5',
+            'self_rating' => '8.0',
         ]));
 
         self::assertResponseStatusCodeSame(400);
@@ -156,13 +160,25 @@ final class CompetencyRatingTest extends WebTestCase
         self::assertResponseIsSuccessful();
         $body = json_decode($client->getResponse()->getContent(), true)['data'];
 
+        // HR change requests #8/#9 rescaled scoring to a 0-100 points
+        // system: kd_average_score stays a 0-5 weighted average as
+        // before, but bc_average_score is now a SUM of Mincom Core
+        // Value points (not a mean — numerically identical here only
+        // because a single competency was rated) and total_score is
+        // kdAvg/5*70 + bcPoints, not a weighted blend of two 0-5
+        // averages. See ScoreEngine's class docblock.
         self::assertSame('4.00', $body['kd_average_score']);
         self::assertSame('4.00', $body['bc_average_score']);
-        // total = 4.00*0.7 + 4.00*0.3 = 4.00
-        self::assertSame('4.00', $body['total_score']);
-        self::assertSame('Exceeds Expectations', $body['kd_descriptor']);
-        self::assertSame('Very Good', $body['bc_descriptor']);
-        self::assertSame('Exceeds Expectations', $body['performance_descriptor']);
+        // total = (4.00/5*70) + 4.00 = 56.00 + 4.00 = 60.00
+        self::assertSame('60.00', $body['total_score']);
+        // Descriptors resolve against the Balanced Scorecard bands
+        // (Outstanding 80+/Good 70-79/Moderate 60-69/Average 50-59/
+        // Under <50) after normalising each component to percent-of-
+        // its-own-max: kdPercent = 4/5*100 = 80.00, bcPercent =
+        // 4/30*100 = 13.33, total = 60.00.
+        self::assertSame('Outstanding Performer', $body['kd_descriptor']);
+        self::assertSame('Under Performer', $body['bc_descriptor']);
+        self::assertSame('Moderate Performer', $body['performance_descriptor']);
     }
 
     public function testScoreStaysNullUntilAllRatingsPresent(): void

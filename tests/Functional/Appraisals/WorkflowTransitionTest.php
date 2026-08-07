@@ -163,7 +163,10 @@ final class WorkflowTransitionTest extends WebTestCase
         self::assertResponseIsSuccessful();
         $body = json_decode($client->getResponse()->getContent(), true)['data'];
         self::assertSame('DISCUSSION', $body['status']);
-        self::assertSame('4.00', $body['total_score']);
+        // Post-rescale (HR change requests #8/#9): total = kdAvg/5*70 +
+        // bcPoints = (4.00/5*70) + 4.00 = 56.00 + 4.00 = 60.00 — see
+        // ScoreEngine and the equivalent comment in CompetencyRatingTest.
+        self::assertSame('60.00', $body['total_score']);
     }
 
     public function testDiscussionToGrowthPlanningRequiresBothPartyComments(): void
