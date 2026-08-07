@@ -51,7 +51,10 @@ class DepartmentCrudController extends AbstractCrudController
             TextField::new('code')->setDisabled(),
             // choice_label: Department has no __toString(), which the
             // edit form's underlying EntityType needs otherwise.
-            AssociationField::new('parent')->setFormTypeOption('choice_label', 'name'),
+            // Labelled "Directorate" per HR change request #6: the
+            // report shows "Directorate / Department", built from this
+            // parent relationship via Department::getFullLabel().
+            AssociationField::new('parent')->setLabel('Directorate')->setFormTypeOption('choice_label', 'name'),
             DateTimeField::new('createdAt')->hideOnForm(),
             DateTimeField::new('updatedAt')->hideOnForm(),
         ];

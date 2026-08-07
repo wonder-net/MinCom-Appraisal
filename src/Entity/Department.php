@@ -79,6 +79,20 @@ class Department
         $this->parent = $parent;
     }
 
+    /**
+     * "Directorate / Department" display label (HR change request #6).
+     * `parent` is used as the directorate: when set, renders
+     * "{parent name} / {this name}"; otherwise just this department's
+     * name, matching the existing PDF layout for departments with no
+     * directorate configured.
+     */
+    public function getFullLabel(): string
+    {
+        return $this->parent !== null
+            ? sprintf('%s / %s', $this->parent->getName(), $this->name)
+            : $this->name;
+    }
+
     public function getCreatedAt(): \DateTimeImmutable
     {
         return $this->createdAt;

@@ -204,10 +204,17 @@ final class AppraisalEscalateController
             metadata: ['reason_sha256' => $reasonHash],
         );
 
-        $manager = $appraisal->getEmployee()->getManager();
-        if ($manager !== null) {
+        // HR change request #3: escalation replaces BOTH appraisers
+        // (manager and matrix appraiser, when set) with the executive —
+        // see AppraisalAccessChecker::isMatrixAppraiserOf() and
+        // SignAppraisalService::deriveSignerRole().
+        $replacedAppraisers = array_filter([
+            $appraisal->getEmployee()->getManager(),
+            $appraisal->getEmployee()->getMatrixAppraiser(),
+        ]);
+        foreach ($replacedAppraisers as $appraiser) {
             $this->notifications->create(
-                $manager->getUser(),
+                $appraiser->getUser(),
                 $appraisal,
                 'appraisal.escalated.manager_replaced',
                 sprintf(

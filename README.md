@@ -1,42 +1,70 @@
-# Symfony backend — local dev
+# MINCOM Appraisal — native MAMP dev environment
 
-Rewrite of the Django backend (`../backend/`), built in isolation with its own
-Postgres database. See `.claude`/session memory for full port status; this
-file is just "how do I run it."
+Symfony rewrite of the original Django backend, plus its React/Vite frontend
+(`frontend/`, pulled in from the `mincom-appraisal` monorepo — see below),
+consolidated into one tree and served natively through MAMP's Apache rather
+than Docker. The rest of this file (Docker/Postgres commands, `symfony` CLI,
+etc.) documents the *original* multi-repo/Docker dev setup this was built
+in — kept for reference since the code and architecture it describes is
+still accurate, but the environment specifics below are what actually apply
+**on this machine**.
 
-## Prerequisites (already set up on this machine)
+## How this is actually served (MAMP, not the `symfony` CLI or Docker)
 
-- Postgres running locally on `5432` (via `brew services` — `postgresql@18`).
-  Databases: `mincom_appraisal_symfony` (dev), `mincom_appraisal_symfony_test`.
-- JWT signing keys already generated at `config/jwt/{private,public}.pem`
-  (persisted on disk, so tokens survive server restarts — don't regenerate
-  these unless you actually want to invalidate every issued token).
-- `symfony` CLI installed (`/usr/local/bin/symfony`).
+- MySQL via MAMP on port `8889` (`.env.local`'s `DATABASE_URL`) — not
+  Postgres. `.env`'s Postgres/Docker-hostname defaults are the *original*
+  project's values and are overridden locally.
+- MAMP's Apache (port `8888`) serves this whole directory directly via an
+  `Alias /MinCom-Appraisal ".../MinCom-Appraisal/public"` in its `httpd.conf`
+  — i.e. **the app's base URL is `http://localhost:8888/MinCom-Appraisal/`**,
+  with no `/public/` segment (Apache maps that prefix straight to the
+  `public/` folder). No `symfony server:start` / Docker needed — as long as
+  MAMP's servers are running, the app is live.
+- `public/.htaccess` decides, per request, whether to hand off to Symfony's
+  front controller (`api/`, `admin*`) or serve the pre-built React SPA
+  (`public/index.html` + `public/assets/`) for everything else — add any
+  new Symfony-routed path prefix there or it'll silently 200 with the SPA
+  shell instead of hitting your route (this bit an earlier `/portal` rollout,
+  since removed — see git history if you need it back).
+- JWT signing keys at `config/jwt/{private,public}.pem` are this machine's
+  own (regenerated for MAMP, not copied from elsewhere) — `.env.local` /
+  `.env.test.local` hold the matching passphrase. Don't regenerate the keys
+  without also updating the passphrase, or every issued token breaks.
 
-## Start the server
+The API is live at `http://localhost:8888/MinCom-Appraisal/api/v1/...`, the
+admin panel at `.../admin`, and the React SPA (the actual app end users log
+into) at `.../` (`/login`, etc.).
 
-```bash
-cd symfony-backend
-symfony server:start --port=8890 --no-tls -d   # -d = detached/background
-```
+## Frontend (`frontend/`)
 
-Stop it with `symfony server:stop` (or drop `-d` to run in the foreground and
-`Ctrl-C` it). Check status any time with `symfony server:status`.
-
-The API is then live at `http://127.0.0.1:8890/api/v1/...`.
-
-## Point the frontend at it
-
-The frontend proxies `/api` to whatever `VITE_API_TARGET` says (see
-`frontend/vite.config.ts`), defaulting to the Docker service name
-`http://backend:8000`, which won't resolve outside Docker. Override it:
+Pulled in from `/Users/wonder/mincom-appraisal/frontend` (the real monorepo,
+found after this MAMP copy — see project memory) so frontend + backend live
+in one place. Set up:
 
 ```bash
 cd frontend
-VITE_API_TARGET=http://127.0.0.1:8890 npm run dev
+npm install   # first time only
+```
+
+**Dev server** (hot-reload on `:5173`, proxies `/api` to the MAMP-served
+backend — note the `/MinCom-Appraisal` prefix, required by the Alias above):
+
+```bash
+VITE_API_TARGET=http://localhost:8888/MinCom-Appraisal npm run dev
 ```
 
 Then open `http://localhost:5173`.
+
+**Rebuilding the deployed bundle** (what `public/index.html` +
+`public/assets/` actually serve — these are committed build *output*, not
+source; `frontend/dist/` is gitignored):
+
+```bash
+cd frontend
+npm run build              # writes frontend/dist/
+cp -r dist/* ../public/    # overwrite the deployed bundle (no --delete: this only
+                            # touches index.html + assets/, never index.php/.htaccess/etc.)
+```
 
 ## First-time / after a fresh database
 

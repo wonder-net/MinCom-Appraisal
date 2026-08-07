@@ -27,12 +27,40 @@ use Doctrine\ORM\EntityManagerInterface;
  *
  * Audit logging (audit_log_action("score.compute", ...) in Django) is
  * intentionally omitted — the `audit` app isn't ported yet.
+ *
+ * HR change requests #8/#9 rescaled the total score to a 0-100 points
+ * system (Key Performance Indicators up to 70 points + Mincom Core
+ * Values up to 30 points):
+ *  - Key Deliverables (KPIs) are unchanged at the data-entry level —
+ *    still rated 1.0-5.0 with per-perspective weights summing to 1.0 —
+ *    so `kdAverageScore` stays a 0-5 weighted average as before, but now
+ *    contributes `kdAvg / KD_MAX_RATING * KD_POINTS_MAX` (max 70) to the total.
+ *  - Mincom Core Values (formerly "Behavioural Competencies") are rated
+ *    directly in points, 1.0-7.5 in 0.5 steps (see
+ *    CompetencyRatingUpdateController's validation), one rating per core
+ *    value (currently 4: Teamwork/Integrity/Professionalism/Service
+ *    Excellence). `bcAverageScore` is now their SUM (not a mean), max 30.
+ *  - Total score = kdPoints (0-70) + bcPoints (0-30), range 0-100 — the
+ *    scale the new score_descriptor bands (Outstanding 80+ / Good 70-79
+ *    / Moderate 60-69 / Average 50-59 / Under <50) are seeded against.
+ *  - Per-component descriptors (kd_descriptor/bc_descriptor) resolve
+ *    against that SAME 0-100 band table by first normalising each
+ *    component to percent-of-its-own-max (kdAvg/5*100, bcPoints/30*100)
+ *    — otherwise a 0-5 KD average could never land in an "Outstanding"
+ *    band under the new 0-100 bands.
  */
 final class ScoreEngine
 {
     private const BC_SCALE = 10;
-    private const KD_WEIGHT = '0.7';
-    private const BC_WEIGHT = '0.3';
+
+    /** Max possible Key Deliverable rating (unchanged data-entry scale). */
+    private const KD_MAX_RATING = '5';
+
+    /** Points a fully-rated KD side (kdAvg = KD_MAX_RATING) contributes to the 100-point total. */
+    private const KD_POINTS_MAX = '70';
+
+    /** Points a fully-rated Mincom Core Values side (4 x 7.5) contributes to the 100-point total. */
+    private const BC_POINTS_MAX = '30';
 
     public function __construct(
         private readonly KeyDeliverableRepository $keyDeliverables,
@@ -60,21 +88,23 @@ final class ScoreEngine
             // the DB rounds the column on save. Only the persisted
             // entity fields are rounded to their column scale.
             $kdAvg = $this->calculateKdAverage($deliverables);
-            $bcAvg = $this->calculateBcAverage($ratings);
+            $bcPoints = $this->calculateBcPoints($ratings);
 
             $appraisal->setKdAverageScore($kdAvg !== null ? $this->roundDecimal($kdAvg, 2) : null);
-            $appraisal->setBcAverageScore($bcAvg !== null ? $this->roundDecimal($bcAvg, 2) : null);
+            $appraisal->setBcAverageScore($bcPoints !== null ? $this->roundDecimal($bcPoints, 2) : null);
 
             $allRated = $this->allManagerRatingsPresent($deliverables, $ratings);
             $hasKdData = $deliverables !== [];
             $hasBcData = $ratings !== [];
 
-            if ($allRated && $hasKdData && $hasBcData && $kdAvg !== null && $bcAvg !== null) {
+            if ($allRated && $hasKdData && $hasBcData && $kdAvg !== null && $bcPoints !== null) {
                 $descriptorRows = $this->fetchDescriptorsForCycle($appraisal);
-                $total = $this->calculateTotalScore($kdAvg, $bcAvg);
+                $total = $this->calculateTotalScore($kdAvg, $bcPoints);
+                $kdPercent = bcmul(bcdiv($kdAvg, self::KD_MAX_RATING, self::BC_SCALE), '100', self::BC_SCALE);
+                $bcPercent = bcmul(bcdiv($bcPoints, self::BC_POINTS_MAX, self::BC_SCALE), '100', self::BC_SCALE);
                 $appraisal->setTotalScore($this->roundDecimal($total, 2));
-                $appraisal->setKdDescriptor($this->resolveDescriptor($kdAvg, $descriptorRows, fn (ScoreDescriptor $d) => $d->getKdLabel()));
-                $appraisal->setBcDescriptor($this->resolveDescriptor($bcAvg, $descriptorRows, fn (ScoreDescriptor $d) => $d->getCompetencyLabel()));
+                $appraisal->setKdDescriptor($this->resolveDescriptor($kdPercent, $descriptorRows, fn (ScoreDescriptor $d) => $d->getKdLabel()));
+                $appraisal->setBcDescriptor($this->resolveDescriptor($bcPercent, $descriptorRows, fn (ScoreDescriptor $d) => $d->getCompetencyLabel()));
                 $appraisal->setPerformanceDescriptor($this->resolveDescriptor($total, $descriptorRows, fn (ScoreDescriptor $d) => $d->getKdLabel()));
             } else {
                 $appraisal->setTotalScore(null);
@@ -120,9 +150,14 @@ final class ScoreEngine
     }
 
     /**
+     * Mincom Core Values are rated directly in points (1.0-7.5 each, HR
+     * change request #8), so this is a SUM of the rated values — max 30
+     * across the 4 core values — not a mean like the old "Behavioural
+     * Competency Average."
+     *
      * @param list<CompetencyRating> $ratings
      */
-    private function calculateBcAverage(array $ratings): ?string
+    private function calculateBcPoints(array $ratings): ?string
     {
         $rated = array_values(array_filter(array_map(static fn (CompetencyRating $cr) => $cr->getManagerRating(), $ratings)));
         if ($rated === []) {
@@ -134,12 +169,19 @@ final class ScoreEngine
             $sum = bcadd($sum, $rating, self::BC_SCALE);
         }
 
-        return bcdiv($sum, (string) count($rated), self::BC_SCALE);
+        return $sum;
     }
 
-    private function calculateTotalScore(string $kdAvg, string $bcAvg): string
+    /**
+     * kdAvg (0-5) is rescaled to a 0-70 point contribution; bcPoints
+     * (0-30, already direct points — see calculateBcPoints()) is added
+     * as-is. Range 0-100 overall.
+     */
+    private function calculateTotalScore(string $kdAvg, string $bcPoints): string
     {
-        return bcadd(bcmul($kdAvg, self::KD_WEIGHT, self::BC_SCALE), bcmul($bcAvg, self::BC_WEIGHT, self::BC_SCALE), self::BC_SCALE);
+        $kdPoints = bcmul(bcdiv($kdAvg, self::KD_MAX_RATING, self::BC_SCALE), self::KD_POINTS_MAX, self::BC_SCALE);
+
+        return bcadd($kdPoints, $bcPoints, self::BC_SCALE);
     }
 
     /**

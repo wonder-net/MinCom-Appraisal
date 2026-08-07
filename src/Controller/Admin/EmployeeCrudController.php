@@ -15,6 +15,7 @@ use EasyCorp\Bundle\EasyAdminBundle\Field\BooleanField;
 use EasyCorp\Bundle\EasyAdminBundle\Field\ChoiceField;
 use EasyCorp\Bundle\EasyAdminBundle\Field\DateTimeField;
 use EasyCorp\Bundle\EasyAdminBundle\Field\IdField;
+use EasyCorp\Bundle\EasyAdminBundle\Field\ImageField;
 use EasyCorp\Bundle\EasyAdminBundle\Field\TextField;
 
 /**
@@ -74,6 +75,18 @@ class EmployeeCrudController extends AbstractCrudController
             // property-path-free label.
             AssociationField::new('department')->setFormTypeOption('choice_label', 'name'),
             AssociationField::new('manager')->hideOnIndex()->setFormTypeOption('choice_label', 'name'),
+            // HR change request #3 ("Matrix Structure / 2 Reporting
+            // Lines"): an optional second appraiser. An appraisal isn't
+            // finalized until both this employee's manager AND their
+            // matrix appraiser (when set) have signed off — see
+            // SignAppraisalService.
+            AssociationField::new('matrixAppraiser')->hideOnIndex()->setLabel('Matrix Appraiser')->setFormTypeOption('choice_label', 'name'),
+            // HR change request #2: employee profile picture.
+            ImageField::new('photoFilename')
+                ->setLabel('Profile Picture')
+                ->setUploadDir('public/uploads/employee-photos')
+                ->setBasePath('uploads/employee-photos')
+                ->hideOnIndex(),
             ChoiceField::new('classification')->setChoices([
                 'Managerial' => EmployeeClassification::MANAGERIAL,
                 'Non-managerial' => EmployeeClassification::NON_MANAGERIAL,

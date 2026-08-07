@@ -111,6 +111,18 @@ final class UserAdminResource
     #[SerializedName('manager_name')]
     public ?string $managerName = null;
 
+    /**
+     * HR change request #3 ("Matrix Structure / 2 Reporting Lines"): an
+     * optional second appraiser, alongside `managerId` above — same
+     * read/write shape and the same Patch partial-update semantics
+     * (see this class's docblock and UserAdminUpdateProcessor's).
+     */
+    #[SerializedName('matrix_appraiser_id')]
+    public ?string $matrixAppraiserId = null;
+
+    #[SerializedName('matrix_appraiser_name')]
+    public ?string $matrixAppraiserName = null;
+
     #[SerializedName('must_change_password')]
     public ?bool $mustChangePassword = null;
 

@@ -91,9 +91,16 @@ class AppraisalRepository extends ServiceEntityRepository
             return true;
         }
 
-        return $user->hasRole(RoleName::MANAGER)
-            && $appraisal->getEmployee()->getManager() !== null
-            && $appraisal->getEmployee()->getManager()->getId()->equals($profile->getId());
+        if (!$user->hasRole(RoleName::MANAGER)) {
+            return false;
+        }
+
+        $employee = $appraisal->getEmployee();
+
+        // HR change request #3: either appraiser (manager or matrix
+        // appraiser) can read the appraisal.
+        return ($employee->getManager() !== null && $employee->getManager()->getId()->equals($profile->getId()))
+            || ($employee->getMatrixAppraiser() !== null && $employee->getMatrixAppraiser()->getId()->equals($profile->getId()));
     }
 
     /**
@@ -125,7 +132,9 @@ class AppraisalRepository extends ServiceEntityRepository
             if ($profile === null) {
                 return ['items' => [], 'count' => 0];
             }
-            $qb->andWhere('(a.employee = :self OR e.manager = :self)')->setParameter('self', $profile);
+            // HR change request #3: also lists appraisals for employees
+            // where this user is the matrix appraiser.
+            $qb->andWhere('(a.employee = :self OR e.manager = :self OR e.matrixAppraiser = :self)')->setParameter('self', $profile);
         } else {
             $profile = $this->employees->findByUser($user);
             if ($profile === null) {

@@ -118,6 +118,7 @@ final class UserAdminCreateProcessor implements ProcessorInterface
         $normalizedEmployeeNumber = null;
         $department = null;
         $managerEmployee = null;
+        $matrixAppraiserEmployee = null;
 
         if ($hasEmployeeNumber) {
             $normalizedEmployeeNumber = EmployeeNumberNormalizer::normalize($data->employeeNumber);
@@ -127,6 +128,7 @@ final class UserAdminCreateProcessor implements ProcessorInterface
 
             $department = $this->resolveDepartment($data);
             $managerEmployee = $this->resolveManager($data->managerId);
+            $matrixAppraiserEmployee = $this->resolveManager($data->matrixAppraiserId, 'matrix appraiser');
         }
 
         $tempPassword = $this->tempPasswordGenerator->generate();
@@ -152,6 +154,9 @@ final class UserAdminCreateProcessor implements ProcessorInterface
             }
             if ($managerEmployee !== null) {
                 $employee->setManager($managerEmployee);
+            }
+            if ($matrixAppraiserEmployee !== null) {
+                $employee->setMatrixAppraiser($matrixAppraiserEmployee);
             }
             $this->em->persist($employee);
         }
@@ -187,15 +192,21 @@ final class UserAdminCreateProcessor implements ProcessorInterface
         return $this->departments->getOrCreateByName($data->departmentName);
     }
 
-    private function resolveManager(?string $managerId): ?Employee
+    /**
+     * Shared by both `manager_id` and `matrix_appraiser_id` (HR change
+     * request #3) — same lookup, just a different field label in the
+     * error message so a bad id in either field points the caller at
+     * the right one.
+     */
+    private function resolveManager(?string $employeeId, string $fieldLabel = 'manager'): ?Employee
     {
-        if ($managerId === null || trim($managerId) === '') {
+        if ($employeeId === null || trim($employeeId) === '') {
             return null;
         }
 
-        $manager = $this->employees->findActiveById($managerId);
+        $manager = $this->employees->findActiveById($employeeId);
         if ($manager === null) {
-            throw new BadRequestException(sprintf("Employee (manager) with id '%s' does not exist.", $managerId));
+            throw new BadRequestException(sprintf("Employee (%s) with id '%s' does not exist.", $fieldLabel, $employeeId));
         }
 
         return $manager;

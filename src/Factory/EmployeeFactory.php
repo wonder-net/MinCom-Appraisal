@@ -42,6 +42,13 @@ final class EmployeeFactory extends PersistentObjectFactory
         });
     }
 
+    public function withMatrixAppraiser(Employee $matrixAppraiser): static
+    {
+        return $this->afterInstantiate(static function (Employee $employee) use ($matrixAppraiser): void {
+            $employee->setMatrixAppraiser($matrixAppraiser);
+        });
+    }
+
     public function inactive(): static
     {
         return $this->afterInstantiate(static function (Employee $employee): void {

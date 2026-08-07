@@ -17,13 +17,36 @@
     RewriteCond %{REQUEST_FILENAME} -f
     RewriteRule ^ - [L]
 
-    # API and EasyAdmin (exact match only — the SPA has its own longer
-    # /admin/* client routes, e.g. /admin/users, which must NOT hit this)
-    # go through Symfony's front controller.
+    # API go through Symfony's front controller.
     RewriteRule ^api/ %{ENV:BASE}/index.php [L]
+
+    # EasyAdmin. CORRECTION (found while verifying admin login end-to-end):
+    # despite the assumption baked into docker/nginx/default.prod.conf,
+    # this EasyAdminBundle version does NOT put every CRUD screen behind
+    # one query-string URL — #[AdminDashboard(routePath: '/admin')] plus
+    # each AbstractCrudController generates a real path-based route per
+    # entity (confirmed via `bin/console debug:router`): /admin/employee,
+    # /admin/department, /admin/user, /admin/role, /admin/competency,
+    # /admin/bsc-perspective, /admin/notification (+ their /new,
+    # /{id}/edit, /autocomplete, etc. sub-paths). Only routing the bare
+    # /admin, /admin/login, /admin/logout meant every other EasyAdmin
+    # click — including the dashboard's own post-login redirect to
+    # /admin/employee — fell through to the React shell below instead of
+    # rendering the actual panel. Each entity slug is singular
+    # (admin/user, admin/competency) while the SPA's own /admin/* client
+    # routes are plural or distinct action words (admin/users,
+    # admin/cycles, admin/competencies) — matched with a trailing
+    # (/|$) boundary so e.g. ^admin/user never swallows admin/users.
     RewriteRule ^admin$ %{ENV:BASE}/index.php [L]
     RewriteRule ^admin/login$ %{ENV:BASE}/index.php [L]
     RewriteRule ^admin/logout$ %{ENV:BASE}/index.php [L]
+    RewriteRule ^admin/employee(/|$) %{ENV:BASE}/index.php [L]
+    RewriteRule ^admin/department(/|$) %{ENV:BASE}/index.php [L]
+    RewriteRule ^admin/user(/|$) %{ENV:BASE}/index.php [L]
+    RewriteRule ^admin/role(/|$) %{ENV:BASE}/index.php [L]
+    RewriteRule ^admin/competency(/|$) %{ENV:BASE}/index.php [L]
+    RewriteRule ^admin/bsc-perspective(/|$) %{ENV:BASE}/index.php [L]
+    RewriteRule ^admin/notification(/|$) %{ENV:BASE}/index.php [L]
 
     # Everything else is a client-side SPA route (or a 404) — serve the
     # React shell and let client-side routing take over, instead of

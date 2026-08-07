@@ -8,7 +8,6 @@ use App\Entity\Appraisal;
 use App\Entity\Comment;
 use App\Enum\AppraisalPartyRole;
 use App\Enum\AppraisalStatus;
-use App\Enum\SignatureAction;
 use App\Enum\StrengthWeaknessType;
 use App\Repository\CommentRepository;
 use App\Repository\CompetencyRatingRepository;
@@ -41,6 +40,7 @@ final class WorkflowGuardService
         private readonly GrowthPlanRepository $growthPlans,
         private readonly StrengthWeaknessRepository $strengthsWeaknesses,
         private readonly TrainingNeedRepository $trainingNeeds,
+        private readonly AppraisalAccessChecker $access,
     ) {
     }
 
@@ -199,16 +199,27 @@ final class WorkflowGuardService
         return $missing === [] ? null : sprintf('Growth plan incomplete: requires %s.', implode(', ', $missing));
     }
 
+    /**
+     * HR change request #3: fixed from a flat "at least 2 accepts" count
+     * (correct only when every appraisee always has exactly one
+     * appraiser) to actually require the appraisee PLUS every assigned
+     * appraiser (manager and, when set, matrix appraiser) — mirrors
+     * SignAppraisalService's own completion check exactly, via the same
+     * AppraisalAccessChecker::countRequiredAppraisers() this guard must
+     * agree with, since this transition is also reachable directly
+     * through the generic transition endpoint (AppraisalTransitionController),
+     * which never goes through SignAppraisalService's stricter gate.
+     */
     private function pendingSignoffToSignedOff(Appraisal $appraisal): ?string
     {
-        $acceptCount = 0;
-        foreach ($this->signatures->findByAppraisalAndRound($appraisal, $appraisal->getSigningRound()) as $signature) {
-            if ($signature->getAction() === SignatureAction::ACCEPT) {
-                ++$acceptCount;
-            }
-        }
+        $round = $appraisal->getSigningRound();
+        $hasAppraiseeAccept = $this->signatures->hasAcceptForRoleAndRound($appraisal, AppraisalPartyRole::APPRAISEE, $round);
+        $acceptedAppraisers = $this->signatures->countDistinctAcceptedAppraisersForRound($appraisal, $round);
+        $requiredAppraisers = $this->access->countRequiredAppraisers($appraisal);
 
-        return $acceptCount >= 2 ? null : 'Both parties must sign with ACCEPT before sign-off.';
+        return $hasAppraiseeAccept && $acceptedAppraisers >= $requiredAppraisers
+            ? null
+            : 'The appraisee and every assigned appraiser must sign with ACCEPT before sign-off.';
     }
 
     private function absDiffExceeds(string $a, string $b, string $tolerance): bool

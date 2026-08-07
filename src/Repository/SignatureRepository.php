@@ -53,6 +53,30 @@ class SignatureRepository extends ServiceEntityRepository
         ]) > 0;
     }
 
+    /**
+     * HR change request #3 ("Matrix Structure / 2 Reporting Lines"):
+     * counts DISTINCT signers (not rows) who accepted in the APPRAISER
+     * role for this round — needed because with a matrix appraiser, two
+     * different people can each hold the APPRAISER role, and sign-off
+     * completion requires all of them, not just one (unlike
+     * hasAcceptForRoleAndRound(), which is a plain existence check).
+     */
+    public function countDistinctAcceptedAppraisersForRound(Appraisal $appraisal, int $round): int
+    {
+        return (int) $this->createQueryBuilder('s')
+            ->select('COUNT(DISTINCT s.signer)')
+            ->where('s.appraisal = :appraisal')
+            ->andWhere('s.signerRole = :role')
+            ->andWhere('s.action = :action')
+            ->andWhere('s.signingRound = :round')
+            ->setParameter('appraisal', $appraisal)
+            ->setParameter('role', AppraisalPartyRole::APPRAISER)
+            ->setParameter('action', SignatureAction::ACCEPT)
+            ->setParameter('round', $round)
+            ->getQuery()
+            ->getSingleScalarResult();
+    }
+
     public function existsForSignerAndRound(Appraisal $appraisal, User $signer, int $round): bool
     {
         return $this->count(['appraisal' => $appraisal, 'signer' => $signer, 'signingRound' => $round]) > 0;

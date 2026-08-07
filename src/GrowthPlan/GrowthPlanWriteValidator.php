@@ -37,6 +37,19 @@ final class GrowthPlanWriteValidator
             }
         }
 
+        // HR change request #11: promotion recommendation, validated the
+        // same way as overall_assessment (an optional free-text field).
+        $hasPromotionRecommendation = array_key_exists('promotion_recommendation', $payload);
+        $promotionRecommendation = '';
+        if ($hasPromotionRecommendation) {
+            $raw = $payload['promotion_recommendation'];
+            if (!is_string($raw)) {
+                $errors['promotion_recommendation'] = 'Not a valid string.';
+            } else {
+                $promotionRecommendation = $raw;
+            }
+        }
+
         $hasSw = array_key_exists('strengths_weaknesses', $payload);
         $strengthsWeaknesses = $hasSw ? $this->validateStrengthsWeaknesses($payload['strengths_weaknesses'], $errors) : [];
 
@@ -56,6 +69,8 @@ final class GrowthPlanWriteValidator
         return new GrowthPlanWriteData(
             hasOverallAssessment: $hasOverallAssessment,
             overallAssessment: $overallAssessment,
+            hasPromotionRecommendation: $hasPromotionRecommendation,
+            promotionRecommendation: $promotionRecommendation,
             hasStrengthsWeaknesses: $hasSw,
             strengthsWeaknesses: $strengthsWeaknesses,
             hasTrainingNeeds: $hasTn,

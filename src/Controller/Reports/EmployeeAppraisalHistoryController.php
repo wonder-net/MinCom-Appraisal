@@ -58,7 +58,12 @@ final class EmployeeAppraisalHistoryController
             return false;
         }
 
-        if ($user->hasRole(RoleName::MANAGER) && $employee->getManager()?->getId()->equals($requesterProfile->getId())) {
+        // HR change request #3: either appraiser (manager or matrix
+        // appraiser) can view the employee's performance history.
+        if ($user->hasRole(RoleName::MANAGER) && (
+            $employee->getManager()?->getId()->equals($requesterProfile->getId())
+            || $employee->getMatrixAppraiser()?->getId()->equals($requesterProfile->getId())
+        )) {
             return true;
         }
 

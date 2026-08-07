@@ -26,6 +26,9 @@ final class CompetencyRatingResponseBuilder
             'competency_applicable_to' => $competency->getApplicableTo()->value,
             'competency_is_core' => $competency->isCore(),
             'competency_sort_order' => $competency->getSortOrder(),
+            // HR change request #8.2 — descriptive only, not separately
+            // rated (see Competency's docblock).
+            'sub_competencies' => $competency->getSubCompetencies(),
             'self_rating' => $rating->getSelfRating(),
             'manager_rating' => $rating->getManagerRating(),
             'created_at' => $rating->getCreatedAt()->format(\DateTimeInterface::ATOM),

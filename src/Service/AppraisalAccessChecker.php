@@ -61,6 +61,45 @@ final class AppraisalAccessChecker
     }
 
     /**
+     * HR change request #3 ("Matrix Structure / 2 Reporting Lines"):
+     * mirrors isManagerOf() but checks the employee's optional second
+     * appraiser instead. Escalation replaces both appraisers with the
+     * executive, same as isManagerOf().
+     */
+    public function isMatrixAppraiserOf(User $user, Appraisal $appraisal): bool
+    {
+        if ($appraisal->getEscalatedExecutive() !== null) {
+            return false;
+        }
+
+        if (!($user->hasRole(RoleName::MANAGER) || $user->hasAdminRole())) {
+            return false;
+        }
+
+        $profile = $this->employees->findByUser($user);
+        if ($profile === null) {
+            return false;
+        }
+
+        $matrixAppraiser = $appraisal->getEmployee()->getMatrixAppraiser();
+
+        return $matrixAppraiser !== null && $matrixAppraiser->getId()->equals($profile->getId());
+    }
+
+    /**
+     * True when the user is authorized to act as EITHER of the
+     * employee's appraisers (primary manager or matrix appraiser) — the
+     * general-purpose check for KD/competency-rating/growth-plan/comment
+     * write access and PDF read access. isManagerOf() alone remains the
+     * narrower "primary manager" check where that distinction still
+     * matters (see TransitionValidator's escalation handling).
+     */
+    public function isAnyAppraiserOf(User $user, Appraisal $appraisal): bool
+    {
+        return $this->isManagerOf($user, $appraisal) || $this->isMatrixAppraiserOf($user, $appraisal);
+    }
+
+    /**
      * True when self_rating_enabled=False on the cycle and the appraisal
      * skipped straight to MANAGER_REVIEW — the manager then needs full
      * KD CRUD, not just rating, since the appraisee never had a chance
@@ -93,7 +132,7 @@ final class AppraisalAccessChecker
         if ($this->isAppraisee($user, $appraisal)) {
             return AppraisalPartyRole::APPRAISEE;
         }
-        if ($this->isManagerOf($user, $appraisal)) {
+        if ($this->isAnyAppraiserOf($user, $appraisal)) {
             return AppraisalPartyRole::APPRAISER;
         }
 
@@ -102,11 +141,37 @@ final class AppraisalAccessChecker
 
     /**
      * Port of _user_can_write_comment: admin tier, the appraisee, or
-     * their manager.
+     * either of their appraisers (manager or matrix appraiser).
      */
     public function userCanWriteComment(User $user, Appraisal $appraisal): bool
     {
-        return $user->hasAdminRole() || $this->isAppraisee($user, $appraisal) || $this->isManagerOf($user, $appraisal);
+        return $user->hasAdminRole() || $this->isAppraisee($user, $appraisal) || $this->isAnyAppraiserOf($user, $appraisal);
+    }
+
+    /**
+     * How many distinct APPRAISER-role signers must accept in a
+     * PENDING_SIGNOFF round before sign-off completes (HR change request
+     * #3): the manager, plus the matrix appraiser when one is assigned.
+     * Escalation replaces both with a single executive. `max(..., 1)`
+     * preserves the pre-matrix-appraiser behaviour of always requiring
+     * at least one APPRAISER accept, even for the edge case of an
+     * employee with no manager assigned. Shared by SignAppraisalService
+     * (decides when to auto-transition to SIGNED_OFF) and
+     * WorkflowGuardService (re-validates the same rule for the generic
+     * transition endpoint, which doesn't go through SignAppraisalService
+     * at all) — both must agree, or a direct transition() call could
+     * finalize sign-off with fewer than all required appraisers.
+     */
+    public function countRequiredAppraisers(Appraisal $appraisal): int
+    {
+        if ($appraisal->getEscalatedExecutive() !== null) {
+            return 1;
+        }
+
+        $employee = $appraisal->getEmployee();
+        $count = ($employee->getManager() !== null ? 1 : 0) + ($employee->getMatrixAppraiser() !== null ? 1 : 0);
+
+        return max($count, 1);
     }
 
     /**

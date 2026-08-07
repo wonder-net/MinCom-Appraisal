@@ -109,6 +109,12 @@ final class AppraisalPdfController
             return true;
         }
 
-        return $employee->getManager() !== null && $employee->getManager()->getId()->equals($profile->getId());
+        if ($employee->getManager() !== null && $employee->getManager()->getId()->equals($profile->getId())) {
+            return true;
+        }
+
+        // HR change request #3: either of the employee's two appraisers
+        // (manager or matrix appraiser) can pull the report.
+        return $employee->getMatrixAppraiser() !== null && $employee->getMatrixAppraiser()->getId()->equals($profile->getId());
     }
 }

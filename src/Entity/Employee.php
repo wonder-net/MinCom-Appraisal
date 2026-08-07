@@ -64,6 +64,26 @@ class Employee
     #[ORM\JoinColumn(name: 'manager_id', nullable: true, onDelete: 'SET NULL')]
     private ?self $manager = null;
 
+    /**
+     * Second reporting line (HR change request #3, "Matrix Structure /
+     * 2 Reporting Lines"). Optional — most employees only have a
+     * `manager`. When set, an appraisal isn't finalized until BOTH the
+     * manager and the matrix appraiser have accepted it (see
+     * SignAppraisalService::countRequiredAppraisers()).
+     */
+    #[ORM\ManyToOne(targetEntity: self::class)]
+    #[ORM\JoinColumn(name: 'matrix_appraiser_id', nullable: true, onDelete: 'SET NULL')]
+    private ?self $matrixAppraiser = null;
+
+    /**
+     * Stored filename of the employee's profile picture (HR change
+     * request #2), relative to the upload directory configured on
+     * EmployeeCrudController's ImageField. Null when no photo has been
+     * uploaded.
+     */
+    #[ORM\Column(type: 'string', length: 255, nullable: true)]
+    private ?string $photoFilename = null;
+
     #[ORM\Column(type: 'boolean')]
     private bool $isActive = true;
 
@@ -186,6 +206,26 @@ class Employee
     public function setManager(?self $manager): void
     {
         $this->manager = $manager;
+    }
+
+    public function getMatrixAppraiser(): ?self
+    {
+        return $this->matrixAppraiser;
+    }
+
+    public function setMatrixAppraiser(?self $matrixAppraiser): void
+    {
+        $this->matrixAppraiser = $matrixAppraiser;
+    }
+
+    public function getPhotoFilename(): ?string
+    {
+        return $this->photoFilename;
+    }
+
+    public function setPhotoFilename(?string $photoFilename): void
+    {
+        $this->photoFilename = $photoFilename;
     }
 
     public function isActive(): bool

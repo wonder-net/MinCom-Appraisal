@@ -190,8 +190,18 @@ final class TransitionValidator
 
         if (in_array(RoleName::MANAGER, $allowedRoles, true) && $user->hasRole(RoleName::MANAGER)) {
             if (!($from === AppraisalStatus::SELF_ASSESSMENT && $to === AppraisalStatus::MANAGER_REVIEW)) {
-                $manager = $appraisal->getEmployee()->getManager();
-                if ($profile !== null && $manager !== null && $manager->getId()->equals($profile->getId())) {
+                // HR change request #3 ("Matrix Structure / 2 Reporting
+                // Lines"): either the manager or the matrix appraiser
+                // may drive a MANAGER-allowed transition — sign-off
+                // itself is still gated on BOTH accepting (see
+                // SignAppraisalService::countRequiredAppraisers()).
+                $employee = $appraisal->getEmployee();
+                $manager = $employee->getManager();
+                $matrixAppraiser = $employee->getMatrixAppraiser();
+                if ($profile !== null && (
+                    ($manager !== null && $manager->getId()->equals($profile->getId()))
+                    || ($matrixAppraiser !== null && $matrixAppraiser->getId()->equals($profile->getId()))
+                )) {
                     return true;
                 }
             }

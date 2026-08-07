@@ -14,6 +14,7 @@ use EasyCorp\Bundle\EasyAdminBundle\Field\BooleanField;
 use EasyCorp\Bundle\EasyAdminBundle\Field\ChoiceField;
 use EasyCorp\Bundle\EasyAdminBundle\Field\IdField;
 use EasyCorp\Bundle\EasyAdminBundle\Field\IntegerField;
+use EasyCorp\Bundle\EasyAdminBundle\Field\TextareaField;
 use EasyCorp\Bundle\EasyAdminBundle\Field\TextField;
 
 /**
@@ -35,8 +36,11 @@ class CompetencyCrudController extends AbstractCrudController
     public function configureCrud(Crud $crud): Crud
     {
         return $crud
-            ->setEntityLabelInSingular('Competency')
-            ->setEntityLabelInPlural('Competencies')
+            // HR change request #7: "Behavioral Competencies" -> "Mincom
+            // Core Values Ratings" — relabeled here too, in the admin
+            // panel used to manage the underlying Competency rows.
+            ->setEntityLabelInSingular('Mincom Core Value')
+            ->setEntityLabelInPlural('Mincom Core Values')
             ->setDefaultSort(['sortOrder' => 'ASC']);
     }
 
@@ -58,6 +62,12 @@ class CompetencyCrudController extends AbstractCrudController
             BooleanField::new('isCore')->setLabel('Core'),
             BooleanField::new('isActive')->setLabel('Active'),
             IntegerField::new('sortOrder')->setLabel('Sort order'),
+            // HR change request #8.2: descriptive sub-competencies shown
+            // under this core value on the appraisal report — one per
+            // line, informational only (not separately rated).
+            TextareaField::new('subCompetenciesText')
+                ->setLabel('Sub-competencies (one per line)')
+                ->hideOnIndex(),
         ];
     }
 }

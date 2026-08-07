@@ -31,6 +31,7 @@ final class SignAppraisalService
         private readonly WorkflowService $workflow,
         private readonly EntityManagerInterface $em,
         private readonly AuditService $auditService,
+        private readonly AppraisalAccessChecker $access,
     ) {
     }
 
@@ -92,9 +93,10 @@ final class SignAppraisalService
             if ($action === SignatureAction::REJECT || $action === SignatureAction::COMMENTS_ATTACHED) {
                 $this->workflow->doTransition($appraisalId, AppraisalStatus::DISPUTED, $user, $appraisal->getVersion());
             } elseif ($action === SignatureAction::ACCEPT) {
-                $hasAppraiserAccept = $this->signatures->hasAcceptForRoleAndRound($appraisal, AppraisalPartyRole::APPRAISER, $currentRound);
                 $hasAppraiseeAccept = $this->signatures->hasAcceptForRoleAndRound($appraisal, AppraisalPartyRole::APPRAISEE, $currentRound);
-                if ($hasAppraiserAccept && $hasAppraiseeAccept) {
+                $acceptedAppraisers = $this->signatures->countDistinctAcceptedAppraisersForRound($appraisal, $currentRound);
+                $requiredAppraisers = $this->access->countRequiredAppraisers($appraisal);
+                if ($hasAppraiseeAccept && $acceptedAppraisers >= $requiredAppraisers) {
                     $this->workflow->doTransition($appraisalId, AppraisalStatus::SIGNED_OFF, $user, $appraisal->getVersion());
                 }
             }
@@ -104,11 +106,14 @@ final class SignAppraisalService
     }
 
     /**
-     * Port of derive_signer_role. Once escalated, the escalated executive
-     * replaces the manager as APPRAISER for signing; the original
-     * manager — even though they still match the appraisee's
-     * org-hierarchy manager — falls through to null (not authorised to
-     * sign). The appraisee path is unaffected by escalation.
+     * Port of derive_signer_role, extended for HR change request #3
+     * ("Matrix Structure / 2 Reporting Lines"): either the manager OR
+     * the matrix appraiser resolves to APPRAISER. Once escalated, the
+     * escalated executive replaces BOTH appraisers for signing; neither
+     * the manager nor the matrix appraiser — even though they still
+     * match the appraisee's org-hierarchy relationships — falls through
+     * to null (not authorised to sign). The appraisee path is
+     * unaffected by escalation.
      */
     private function deriveSignerRole(?Employee $profile, User $user, Appraisal $appraisal): ?AppraisalPartyRole
     {
@@ -121,12 +126,18 @@ final class SignAppraisalService
             return $escalatedExecutive->getId()->equals($user->getId()) ? AppraisalPartyRole::APPRAISER : null;
         }
 
-        $manager = $appraisal->getEmployee()->getManager();
-        if ($manager !== null && $profile !== null && $profile->getId()->equals($manager->getId())) {
-            return AppraisalPartyRole::APPRAISER;
+        if ($profile === null) {
+            return null;
         }
 
-        return null;
+        $employee = $appraisal->getEmployee();
+        $manager = $employee->getManager();
+        $matrixAppraiser = $employee->getMatrixAppraiser();
+
+        $isManager = $manager !== null && $profile->getId()->equals($manager->getId());
+        $isMatrixAppraiser = $matrixAppraiser !== null && $profile->getId()->equals($matrixAppraiser->getId());
+
+        return $isManager || $isMatrixAppraiser ? AppraisalPartyRole::APPRAISER : null;
     }
 
     private function validateSignPermission(?AppraisalPartyRole $signerRole, AppraisalStatus $status): ?string
@@ -135,7 +146,7 @@ final class SignAppraisalService
             return 'Signatures are only allowed when the appraisal is in PENDING_SIGNOFF status.';
         }
         if ($signerRole === null) {
-            return 'Only the appraisee or their manager can sign this appraisal.';
+            return 'Only the appraisee or one of their appraisers can sign this appraisal.';
         }
 
         return null;

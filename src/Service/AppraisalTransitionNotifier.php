@@ -53,7 +53,7 @@ final class AppraisalTransitionNotifier
 
         if ($oldStatus === AppraisalStatus::PENDING_SIGNOFF && $toStatus === AppraisalStatus::SIGNED_OFF) {
             foreach ($this->partyRecipients($appraisal) as $recipient) {
-                $this->notifications->create($recipient, $appraisal, $eventType, 'Appraisal has been signed off by both parties.');
+                $this->notifications->create($recipient, $appraisal, $eventType, 'Appraisal has been signed off by all parties.');
             }
             foreach ($this->users->findAllByRole(RoleName::HR_ADMIN) as $hrAdmin) {
                 $this->notifications->create($hrAdmin, $appraisal, 'appraisal.signed_off.hr', 'Appraisal has been signed off and is ready for finalisation.');
@@ -70,27 +70,45 @@ final class AppraisalTransitionNotifier
             return;
         }
 
-        $recipient = $this->determineRecipient($appraisal, $requestingUser);
-        if ($recipient !== null) {
+        foreach ($this->determineRecipients($appraisal, $requestingUser) as $recipient) {
             $this->notifications->create($recipient, $appraisal, $eventType, $message);
         }
     }
 
     /**
      * Port of _determine_notification_recipient: employee submits ->
-     * notify manager; manager/HR acts -> notify employee.
+     * notify both appraisers (manager + matrix appraiser, when set —
+     * HR change request #3); manager/matrix-appraiser/HR acts -> notify
+     * employee.
+     *
+     * @return list<User>
      */
-    private function determineRecipient(Appraisal $appraisal, User $requestingUser): ?User
+    private function determineRecipients(Appraisal $appraisal, User $requestingUser): array
     {
         $employeeUser = $appraisal->getEmployee()->getUser();
 
         if ($employeeUser->getId()->equals($requestingUser->getId())) {
-            $manager = $appraisal->getEmployee()->getManager();
-
-            return $manager?->getUser();
+            return $this->appraiserRecipients($appraisal);
         }
 
-        return $employeeUser;
+        return [$employeeUser];
+    }
+
+    /**
+     * @return list<User>
+     */
+    private function appraiserRecipients(Appraisal $appraisal): array
+    {
+        $employee = $appraisal->getEmployee();
+        $recipients = [];
+        if ($employee->getManager() !== null) {
+            $recipients[] = $employee->getManager()->getUser();
+        }
+        if ($employee->getMatrixAppraiser() !== null) {
+            $recipients[] = $employee->getMatrixAppraiser()->getUser();
+        }
+
+        return $this->dedupeById($recipients);
     }
 
     /**
@@ -98,13 +116,7 @@ final class AppraisalTransitionNotifier
      */
     private function partyRecipients(Appraisal $appraisal): array
     {
-        $recipients = [$appraisal->getEmployee()->getUser()];
-        $manager = $appraisal->getEmployee()->getManager();
-        if ($manager !== null) {
-            $recipients[] = $manager->getUser();
-        }
-
-        return $this->dedupeById($recipients);
+        return $this->dedupeById([$appraisal->getEmployee()->getUser(), ...$this->appraiserRecipients($appraisal)]);
     }
 
     /**

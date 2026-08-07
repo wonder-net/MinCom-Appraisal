@@ -51,7 +51,7 @@ final class GrowthPlanCreateController
             throw new NotFoundHttpException();
         }
 
-        if (!($user->hasAdminRole() || $this->access->isManagerOf($user, $appraisal))) {
+        if (!($user->hasAdminRole() || $this->access->isAnyAppraiserOf($user, $appraisal))) {
             return new JsonResponse(['detail' => 'You do not have permission to perform this action.'], 403);
         }
 
@@ -68,9 +68,11 @@ final class GrowthPlanCreateController
 
             if ($existing !== null) {
                 $existing->setOverallAssessment($data->overallAssessment);
+                $existing->setPromotionRecommendation($data->promotionRecommendation);
                 $growthPlan = $existing;
             } else {
                 $growthPlan = new GrowthPlan($appraisal, $data->overallAssessment);
+                $growthPlan->setPromotionRecommendation($data->promotionRecommendation);
                 $this->em->persist($growthPlan);
                 $this->em->flush();
             }

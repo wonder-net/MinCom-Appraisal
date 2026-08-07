@@ -38,6 +38,7 @@ final class UserAdminResourceFactory
 
         if ($employee !== null) {
             $manager = $employee->getManager();
+            $matrixAppraiser = $employee->getMatrixAppraiser();
             $resource->employeeId = (string) $employee->getId();
             $resource->employeeName = $employee->getName();
             $resource->employeeNumber = $employee->getEmployeeNumber();
@@ -49,6 +50,8 @@ final class UserAdminResourceFactory
             $resource->classification = $employee->getClassification()->value;
             $resource->managerId = $manager !== null ? (string) $manager->getId() : null;
             $resource->managerName = $manager?->getName();
+            $resource->matrixAppraiserId = $matrixAppraiser !== null ? (string) $matrixAppraiser->getId() : null;
+            $resource->matrixAppraiserName = $matrixAppraiser?->getName();
         }
 
         return $resource;

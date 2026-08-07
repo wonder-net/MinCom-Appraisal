@@ -129,6 +129,12 @@ final class UserAdminUpdateProcessor implements ProcessorInterface
         $managerProvided = $employee !== null && array_key_exists('manager_id', $rawBody);
         $managerEmployee = $managerProvided ? $this->resolveManager($rawBody['manager_id']) : null;
 
+        // HR change request #3 ("Matrix Structure / 2 Reporting Lines").
+        $matrixAppraiserProvided = $employee !== null && array_key_exists('matrix_appraiser_id', $rawBody);
+        $matrixAppraiserEmployee = $matrixAppraiserProvided
+            ? $this->resolveManager($rawBody['matrix_appraiser_id'], 'matrix appraiser')
+            : null;
+
         $jobTitleProvided = $employee !== null && array_key_exists('job_title', $rawBody);
         $jobFamilyProvided = $employee !== null && array_key_exists('job_family', $rawBody);
         $locationProvided = $employee !== null && array_key_exists('location', $rawBody);
@@ -176,6 +182,9 @@ final class UserAdminUpdateProcessor implements ProcessorInterface
             if ($managerProvided) {
                 $employee->setManager($managerEmployee);
             }
+            if ($matrixAppraiserProvided) {
+                $employee->setMatrixAppraiser($matrixAppraiserEmployee);
+            }
         }
 
         $this->em->flush();
@@ -212,7 +221,13 @@ final class UserAdminUpdateProcessor implements ProcessorInterface
         throw new BadRequestException('Either department_id or department_name is required.');
     }
 
-    private function resolveManager(mixed $managerId): ?Employee
+    /**
+     * Shared by both `manager_id` and `matrix_appraiser_id` (HR change
+     * request #3) — same lookup, just a different field label in the
+     * error message so a bad id in either field points the caller at
+     * the right one.
+     */
+    private function resolveManager(mixed $managerId, string $fieldLabel = 'manager'): ?Employee
     {
         if ($managerId === null || trim((string) $managerId) === '') {
             return null;
@@ -220,7 +235,7 @@ final class UserAdminUpdateProcessor implements ProcessorInterface
 
         $manager = $this->employees->findActiveById((string) $managerId);
         if ($manager === null) {
-            throw new BadRequestException(sprintf("Employee (manager) with id '%s' does not exist.", $managerId));
+            throw new BadRequestException(sprintf("Employee (%s) with id '%s' does not exist.", $fieldLabel, $managerId));
         }
 
         return $manager;

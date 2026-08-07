@@ -32,6 +32,15 @@ class GrowthPlan
     #[ORM\Column(type: 'encrypted_string', nullable: true)]
     private ?string $overallAssessment = '';
 
+    /**
+     * HR change request #11: a promotion recommendation, shown on the
+     * appraisal report just before the Signatures section. Encrypted
+     * at rest for consistency with the other free-text appraisal
+     * content on this entity.
+     */
+    #[ORM\Column(type: 'encrypted_string', nullable: true)]
+    private ?string $promotionRecommendation = null;
+
     #[ORM\Column(type: 'datetime_immutable')]
     private \DateTimeImmutable $createdAt;
 
@@ -71,6 +80,16 @@ class GrowthPlan
     public function setOverallAssessment(?string $overallAssessment): void
     {
         $this->overallAssessment = $overallAssessment;
+    }
+
+    public function getPromotionRecommendation(): ?string
+    {
+        return $this->promotionRecommendation;
+    }
+
+    public function setPromotionRecommendation(?string $promotionRecommendation): void
+    {
+        $this->promotionRecommendation = $promotionRecommendation;
     }
 
     public function getCreatedAt(): \DateTimeImmutable

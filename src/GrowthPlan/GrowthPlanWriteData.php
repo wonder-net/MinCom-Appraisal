@@ -23,6 +23,8 @@ final class GrowthPlanWriteData
     public function __construct(
         public readonly bool $hasOverallAssessment,
         public readonly string $overallAssessment,
+        public readonly bool $hasPromotionRecommendation,
+        public readonly string $promotionRecommendation,
         public readonly bool $hasStrengthsWeaknesses,
         public readonly array $strengthsWeaknesses,
         public readonly bool $hasTrainingNeeds,

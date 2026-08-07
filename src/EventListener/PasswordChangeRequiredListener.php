@@ -56,12 +56,7 @@ final class PasswordChangeRequiredListener
         // The /admin panel is a separate, session-based firewall (see
         // security.yaml) with no rotation-flow UI of its own — Django's
         // admin login is likewise untouched by this same forced-reset
-        // gate, which only ever guards the JWT API. Without this
-        // exemption, any HR_ADMIN/SYSTEM_ADMIN user provisioned via the
-        // temp-password flow (bulk import, admin-create-user — both
-        // deliberately leave lastPasswordChange null) would be
-        // permanently locked out of the admin panel with nowhere to go
-        // rotate it from.
+        // gate, which only ever guards the JWT API.
         if (str_starts_with($path, '/admin')) {
             return;
         }

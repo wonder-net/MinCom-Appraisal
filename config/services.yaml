@@ -14,6 +14,9 @@ parameters:
     app.appraisal_template_dir: '%kernel.project_dir%/resources/appraisal_templates'
     app.frontend_url: '%env(FRONTEND_URL)%'
     app.pdf_logo_path: '%kernel.project_dir%/resources/images/logo-pdf.png'
+    # HR change request #2 — matches EmployeeCrudController's ImageField
+    # uploadDir ('public/uploads/employee-photos').
+    app.employee_photo_dir: '%kernel.project_dir%/public/uploads/employee-photos'
     app.audit_hmac_key: '%env(AUDIT_HMAC_KEY)%'
     app.mailer_from_address: '%env(MAILER_FROM_ADDRESS)%'
     app.postmark_message_stream: '%env(POSTMARK_MESSAGE_STREAM)%'
@@ -32,6 +35,7 @@ services:
             string $appraisalTemplateDir: '%app.appraisal_template_dir%'
             string $frontendUrl: '%app.frontend_url%'
             string $pdfLogoPath: '%app.pdf_logo_path%'
+            string $employeePhotoDir: '%app.employee_photo_dir%'
             string $auditHmacKey: '%app.audit_hmac_key%'
             string $mailerFromAddress: '%app.mailer_from_address%'
             string $postmarkMessageStream: '%app.postmark_message_stream%'

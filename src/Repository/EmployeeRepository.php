@@ -184,7 +184,10 @@ class EmployeeRepository extends ServiceEntityRepository
             if ($profile === null) {
                 return ['items' => [], 'count' => 0];
             }
-            $qb->andWhere('(e = :self OR e.manager = :self)')->setParameter('self', $profile);
+            // HR change request #3: "my team" also includes employees
+            // for whom this user is the matrix appraiser, not just
+            // their direct reports.
+            $qb->andWhere('(e = :self OR e.manager = :self OR e.matrixAppraiser = :self)')->setParameter('self', $profile);
         } else {
             $profile = $this->findByUser($user);
             if ($profile === null) {
@@ -205,7 +208,9 @@ class EmployeeRepository extends ServiceEntityRepository
     public function findActiveDirectReports(Employee $manager, int $page, int $pageSize): array
     {
         $qb = $this->createQueryBuilder('e')
-            ->where('e.manager = :manager')
+            // HR change request #3: also surfaces employees for whom
+            // $manager is the matrix appraiser, not just direct reports.
+            ->where('e.manager = :manager OR e.matrixAppraiser = :manager')
             ->andWhere('e.isActive = true')
             ->setParameter('manager', $manager)
             ->orderBy('e.employeeNumber', 'ASC');

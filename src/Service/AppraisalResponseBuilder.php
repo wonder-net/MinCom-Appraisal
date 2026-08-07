@@ -5,8 +5,10 @@ declare(strict_types=1);
 namespace App\Service;
 
 use App\Entity\Appraisal;
+use App\Entity\Employee;
 use App\Entity\Signature;
 use App\Repository\SignatureRepository;
+use Symfony\Component\Asset\Packages;
 
 /**
  * Port of apps.appraisals.serializers.{AppraisalSerializer,
@@ -17,6 +19,7 @@ final class AppraisalResponseBuilder
     public function __construct(
         private readonly SignatureRepository $signatures,
         private readonly SignatureResponseBuilder $signatureResponseBuilder,
+        private readonly Packages $assetPackages,
     ) {
     }
 
@@ -35,6 +38,9 @@ final class AppraisalResponseBuilder
             'employee_name' => $employee->getName(),
             'employee_job_title' => $employee->getJobTitle(),
             'department' => $this->departmentName($appraisal),
+            // HR change request #6 — additive alongside `department` so
+            // existing consumers of that field are unaffected.
+            'department_full_label' => $employee->getDepartment()->getFullLabel(),
             'self_rating_enabled' => $appraisal->getCycle()->isSelfRatingEnabled(),
             'form_type' => $appraisal->getFormType()->value,
             'status' => $appraisal->getStatus()->value,
@@ -63,6 +69,12 @@ final class AppraisalResponseBuilder
             'employee_job_title' => $employee->getJobTitle(),
             'appraiser_id' => $manager !== null ? (string) $manager->getId() : null,
             'department' => $this->departmentName($appraisal),
+            // HR change requests #6 (Directorate/Department) and #2
+            // (employee photo) — additive fields for the SPA's appraisal
+            // header, same data EmployeeResponseBuilder/EmployeePhotoLoader
+            // already expose elsewhere.
+            'department_full_label' => $employee->getDepartment()->getFullLabel(),
+            'employee_photo_url' => $this->employeePhotoUrl($employee),
             'self_rating_enabled' => $appraisal->getCycle()->isSelfRatingEnabled(),
             'form_type' => $appraisal->getFormType()->value,
             'status' => $appraisal->getStatus()->value,
@@ -131,5 +143,19 @@ final class AppraisalResponseBuilder
         $executive = $appraisal->getEscalatedExecutive();
 
         return $executive !== null ? (string) $executive->getId() : null;
+    }
+
+    /**
+     * Mirrors EmployeeResponseBuilder::photoUrl() (see its docblock for
+     * why Packages::getUrl() + rawurlencode() rather than a hardcoded
+     * `/uploads/...` string) — kept as its own tiny duplicate rather than
+     * a shared dependency, since this class doesn't otherwise need
+     * EmployeeResponseBuilder and the logic is one line.
+     */
+    private function employeePhotoUrl(Employee $employee): ?string
+    {
+        $filename = $employee->getPhotoFilename();
+
+        return $filename !== null ? $this->assetPackages->getUrl('uploads/employee-photos/'.rawurlencode($filename)) : null;
     }
 }

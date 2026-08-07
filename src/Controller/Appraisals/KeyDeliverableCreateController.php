@@ -51,7 +51,7 @@ final class KeyDeliverableCreateController
         }
 
         $isAppraisee = $this->access->isAppraisee($user, $appraisal);
-        $isManager = $this->access->isManagerOf($user, $appraisal);
+        $isManager = $this->access->isAnyAppraiserOf($user, $appraisal);
         $payload = json_decode($request->getContent(), true) ?? [];
 
         if ($isManager && !$isAppraisee && $this->access->managerCanCrudKds($appraisal)) {

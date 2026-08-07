@@ -37,6 +37,8 @@ final class GrowthPlanResponseBuilder
             'id' => (string) $growthPlan->getId(),
             'appraisal_id' => (string) $growthPlan->getAppraisal()->getId(),
             'overall_assessment' => $growthPlan->getOverallAssessment(),
+            // HR change request #11.
+            'promotion_recommendation' => $growthPlan->getPromotionRecommendation(),
             'strengths_weaknesses' => array_map(
                 $this->buildStrengthWeakness(...),
                 $this->strengthsWeaknesses->findByGrowthPlanOrdered($growthPlan),

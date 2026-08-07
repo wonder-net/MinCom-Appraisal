@@ -47,7 +47,7 @@ final class KeyDeliverableDeleteController
         }
 
         $isAppraisee = $this->access->isAppraisee($user, $appraisal);
-        $isManager = $this->access->isManagerOf($user, $appraisal);
+        $isManager = $this->access->isAnyAppraiserOf($user, $appraisal);
         $managerCrudAllowed = $isManager && !$isAppraisee && $this->access->managerCanCrudKds($appraisal);
 
         if (!$isAppraisee && !$managerCrudAllowed) {

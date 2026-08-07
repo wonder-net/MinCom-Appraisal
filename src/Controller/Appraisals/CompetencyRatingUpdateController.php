@@ -22,8 +22,10 @@ use Symfony\Component\Security\Http\Attribute\CurrentUser;
 /**
  * Port of CompetencyRatingViewSet.partial_update(). Appraisee sets
  * self_rating during SELF_ASSESSMENT (only when cycle.self_rating_enabled
- * is True); manager sets manager_rating during MANAGER_REVIEW,
- * DISCUSSION, or DISPUTED.
+ * is True); either appraiser (manager or matrix appraiser — HR change
+ * request #3) sets manager_rating during MANAGER_REVIEW, DISCUSSION, or
+ * DISPUTED. Ratings are 1.0-7.5 in 0.5 increments (HR change request
+ * #8) — see validateRatingRange().
  */
 final class CompetencyRatingUpdateController
 {
@@ -52,7 +54,7 @@ final class CompetencyRatingUpdateController
 
         $payload = json_decode($request->getContent(), true) ?? [];
         $isAppraisee = $this->access->isAppraisee($user, $appraisal);
-        $isManager = $this->access->isManagerOf($user, $appraisal);
+        $isManager = $this->access->isAnyAppraiserOf($user, $appraisal);
 
         $canSelfRate = $isAppraisee
             && $appraisal->getStatus() === AppraisalStatus::SELF_ASSESSMENT
@@ -74,18 +76,18 @@ final class CompetencyRatingUpdateController
             if (!isset($payload['self_rating']) || !is_numeric($payload['self_rating'])) {
                 $errors['self_rating'] = 'This field is required.';
             } else {
-                $selfRating = (string) $payload['self_rating'];
-                if (bccomp($selfRating, '1.0', 2) < 0 || bccomp($selfRating, '5.0', 2) > 0) {
-                    $errors['self_rating'] = sprintf('Rating must be between %s and %s.', '1.0', '5.0');
+                $error = $this->validateRatingRange((string) $payload['self_rating']);
+                if ($error !== null) {
+                    $errors['self_rating'] = $error;
                 }
             }
         } else {
             if (!isset($payload['manager_rating']) || !is_numeric($payload['manager_rating'])) {
                 $errors['manager_rating'] = 'This field is required.';
             } else {
-                $managerRating = (string) $payload['manager_rating'];
-                if (bccomp($managerRating, '1.0', 2) < 0 || bccomp($managerRating, '5.0', 2) > 0) {
-                    $errors['manager_rating'] = sprintf('Rating must be between %s and %s.', '1.0', '5.0');
+                $error = $this->validateRatingRange((string) $payload['manager_rating']);
+                if ($error !== null) {
+                    $errors['manager_rating'] = $error;
                 }
             }
         }
@@ -118,5 +120,24 @@ final class CompetencyRatingUpdateController
     private function normalizeRating(string $raw): string
     {
         return bcadd($raw, '0', 2);
+    }
+
+    /**
+     * HR change request #8: Mincom Core Value ratings are 1.0-7.5 in 0.5
+     * increments (each rating is a direct point contribution toward the
+     * 30-point core-values total — see ScoreEngine), not the old 1.0-5.0
+     * scale.
+     */
+    private function validateRatingRange(string $rating): ?string
+    {
+        if (bccomp($rating, '1.0', 2) < 0 || bccomp($rating, '7.5', 2) > 0) {
+            return sprintf('Rating must be between %s and %s.', '1.0', '7.5');
+        }
+
+        if (bccomp(bcmod($rating, '0.5', 2), '0', 2) !== 0) {
+            return 'Rating must be in increments of 0.5 (e.g. 1.0, 1.5, 2.0, ... 7.5).';
+        }
+
+        return null;
     }
 }

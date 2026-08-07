@@ -8,6 +8,7 @@ use App\Entity\Appraisal;
 use App\Entity\CompetencyRating;
 use App\Entity\DevelopmentNeed;
 use App\Entity\KeyDeliverable;
+use App\Entity\ScoreDescriptor;
 use App\Entity\Signature;
 use App\Entity\StrengthWeakness;
 use App\Entity\TrainingNeed;
@@ -18,6 +19,7 @@ use App\Repository\DevelopmentNeedRepository;
 use App\Repository\EmployeeRepository;
 use App\Repository\GrowthPlanRepository;
 use App\Repository\KeyDeliverableRepository;
+use App\Repository\ScoreDescriptorRepository;
 use App\Repository\SignatureRepository;
 use App\Repository\StrengthWeaknessRepository;
 use App\Repository\TrainingNeedRepository;
@@ -42,7 +44,9 @@ final class AppraisalPdfContextBuilder
         private readonly DevelopmentNeedRepository $developmentNeeds,
         private readonly SignatureRepository $signatures,
         private readonly EmployeeRepository $employees,
+        private readonly ScoreDescriptorRepository $scoreDescriptors,
         private readonly PdfLogo $logo,
+        private readonly EmployeePhotoLoader $employeePhoto,
         private readonly ReportCalculations $calculations,
     ) {
     }
@@ -59,7 +63,12 @@ final class AppraisalPdfContextBuilder
             'employee_name' => $employee->getName(),
             'employee_id' => $employee->getEmployeeNumber(),
             'job_title' => $employee->getJobTitle(),
-            'department_name' => $employee->getDepartment()->getName(),
+            // HR change request #6: "Directorate / Department".
+            'department_name' => $employee->getDepartment()->getFullLabel(),
+            // HR change request #2: employee profile picture, embedded
+            // the same way the MINCOM logo is (see PdfLogo) so it
+            // survives dompdf rendering without needing a reachable URL.
+            'employee_photo_b64' => $this->employeePhoto->base64DataUri($employee->getPhotoFilename()),
             'cycle_name' => $cycle->getPeriodName(),
             'cycle_year' => (int) $cycle->getStartDate()->format('Y'),
             'cycle_start' => $cycle->getStartDate()->format('Y-m-d'),
@@ -76,8 +85,12 @@ final class AppraisalPdfContextBuilder
                 'manager_rating' => $kd->getManagerRating(),
                 'weighted_score' => $kd->getWeightedScore() !== null ? $this->calculations->roundHalfEven($kd->getWeightedScore(), 2) : null,
             ], $this->keyDeliverables->findByAppraisalOrderedBySortOrder($appraisal)),
+            // HR change request #7/#8: "Mincom Core Values Ratings" —
+            // sub_competencies are descriptive only (see Competency's
+            // docblock), shown as sub-bullets under each core value.
             'competency_ratings' => array_map(fn (CompetencyRating $cr) => [
                 'competency_name' => $cr->getCompetency()->getName(),
+                'sub_competencies' => $cr->getCompetency()->getSubCompetencies(),
                 'self_rating' => $cr->getSelfRating(),
                 'manager_rating' => $cr->getManagerRating(),
             ], $this->competencyRatings->findByAppraisalOrdered($appraisal)),
@@ -87,6 +100,15 @@ final class AppraisalPdfContextBuilder
             'bc_descriptor' => $appraisal->getBcDescriptor(),
             'total_score' => $appraisal->getTotalScore(),
             'performance_descriptor' => $appraisal->getPerformanceDescriptor(),
+            // HR change request #9: describes the Balanced Scorecard
+            // rating scale applied to the Total Score — pulled live from
+            // ScoreDescriptor's system defaults (not hardcoded) so the
+            // legend can't drift from what ScoreEngine actually applies.
+            'rating_scale' => array_map(fn (ScoreDescriptor $d) => [
+                'label' => $d->getKdLabel(),
+                'min_score' => $this->calculations->roundHalfEven($d->getMinScore(), 2),
+                'max_score' => $this->calculations->roundHalfEven($d->getMaxScore(), 2),
+            ], $this->scoreDescriptors->findDefaultsOrderedBySortOrder()),
             'growth_plan' => $this->buildGrowthPlanContext($appraisal),
             'signatures' => array_map(fn (Signature $s) => $this->buildSignatureRow($s), $this->signatures->findByAppraisalOrderedBySignedAt($appraisal)),
             'generated_at' => (new \DateTimeImmutable())->format(\DateTimeInterface::ATOM),
@@ -108,6 +130,8 @@ final class AppraisalPdfContextBuilder
 
         return [
             'overall_assessment' => $growthPlan->getOverallAssessment() ?? '',
+            // HR change request #11.
+            'promotion_recommendation' => $growthPlan->getPromotionRecommendation() ?? '',
             'strengths' => array_values(array_map(
                 static fn (StrengthWeakness $sw) => $sw->getDescription(),
                 array_filter($strengthsAndWeaknesses, static fn (StrengthWeakness $sw) => StrengthWeaknessType::STRENGTH === $sw->getType()),
