@@ -24,6 +24,13 @@
 /vendor/
 ###< symfony/framework-bundle ###
 
+###> app: uploaded user content ###
+# Runtime-uploaded files (employee profile photos via EasyAdmin's
+# ImageField — see EmployeeCrudController), not application code.
+# Real people's photos have no business living in git history.
+/public/uploads/
+###< app ###
+
 ###> lexik/jwt-authentication-bundle ###
 /config/jwt/*.pem
 ###< lexik/jwt-authentication-bundle ###
@@ -32,4 +39,15 @@
 /phpunit.xml
 /.phpunit.cache/
 ###< phpunit/phpunit ###
+
+###> frontend (React/Vite, brought in from the mincom-appraisal monorepo) ###
+# frontend/dist/ is a *build artifact*, not the deployed bundle — the
+# currently-served SPA lives in /public/assets (+ /public/index.html),
+# committed separately; frontend/dist is only where `npm run build`
+# writes locally before someone copies it over public/ to redeploy.
+/frontend/node_modules/
+/frontend/dist/
+/frontend/.env.local
+###< frontend ###
+
 .DS_Store

@@ -1,0 +1,36 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`HelpIcon > matches snapshot 1`] = `
+<a
+  aria-label="Open help for foo"
+  class="inline-flex items-center justify-center text-gray-400 hover:text-secondary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-secondary rounded-full transition-colors"
+  data-discover="true"
+  href="/help/foo/bar"
+>
+  <svg
+    aria-hidden="true"
+    class="lucide lucide-circle-help h-4 w-4"
+    fill="none"
+    height="24"
+    stroke="currentColor"
+    stroke-linecap="round"
+    stroke-linejoin="round"
+    stroke-width="2"
+    viewBox="0 0 24 24"
+    width="24"
+    xmlns="http://www.w3.org/2000/svg"
+  >
+    <circle
+      cx="12"
+      cy="12"
+      r="10"
+    />
+    <path
+      d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"
+    />
+    <path
+      d="M12 17h.01"
+    />
+  </svg>
+</a>
+`;
