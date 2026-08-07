@@ -12,6 +12,7 @@ import type {
   StrengthWeaknessType,
   TrainingNeedPriority,
   TrainingNeedType,
+  PotentialRating,
 } from "@/types";
 
 /** Generates a temporary client-side ID for new list entries. */
@@ -82,9 +83,11 @@ export const toPayload = (
   careerPlans: CareerPlan[],
   developmentNeeds: DevelopmentNeed[],
   promotionRecommendation: string = "",
+  potentialRating: PotentialRating | null = null,
 ): GrowthPlanPayload => ({
   overall_assessment: overallAssessment,
   promotion_recommendation: promotionRecommendation,
+  potential_rating: potentialRating,
   strengths_weaknesses: strengthsWeaknesses.map(({ type, description }) => ({
     type,
     description,
@@ -111,6 +114,7 @@ export const fromGrowthPlan = (
 ): {
   overallAssessment: string;
   promotionRecommendation: string;
+  potentialRating: PotentialRating | null;
   strengthsWeaknesses: StrengthWeakness[];
   trainingNeeds: TrainingNeed[];
   careerPlans: CareerPlan[];
@@ -118,6 +122,7 @@ export const fromGrowthPlan = (
 } => ({
   overallAssessment: plan.overall_assessment,
   promotionRecommendation: plan.promotion_recommendation ?? "",
+  potentialRating: plan.potential_rating ?? null,
   strengthsWeaknesses: plan.strengths_weaknesses,
   trainingNeeds: plan.training_needs,
   careerPlans: plan.career_plans,

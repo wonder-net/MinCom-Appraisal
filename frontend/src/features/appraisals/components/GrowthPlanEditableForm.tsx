@@ -10,7 +10,9 @@ import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
-import type { GrowthPlan, GrowthPlanPayload } from "@/types";
+import { Select } from "@/components/ui/select";
+import type { GrowthPlan, GrowthPlanPayload, PotentialRating } from "@/types";
+import { POTENTIAL_RATING_LABELS } from "@/types";
 import { SwSection } from "./SwSection";
 import { TnSection } from "./TnSection";
 import { CpSection } from "./CpSection";
@@ -55,6 +57,7 @@ export function GrowthPlanEditableForm({
         : {
             overallAssessment: "",
             promotionRecommendation: "",
+            potentialRating: null,
             strengthsWeaknesses: [emptyStrengthWeakness()],
             trainingNeeds: [emptyTrainingNeed()],
             careerPlans: [emptyCareerPlan()],
@@ -65,6 +68,7 @@ export function GrowthPlanEditableForm({
 
   const [overallAssessment, setOverallAssessment] = useState(initial.overallAssessment);
   const [promotionRecommendation, setPromotionRecommendation] = useState(initial.promotionRecommendation);
+  const [potentialRating, setPotentialRating] = useState<PotentialRating | null>(initial.potentialRating);
   const [sw, setSw] = useState<StrengthWeakness[]>(initial.strengthsWeaknesses);
   const [tn, setTn] = useState<TrainingNeed[]>(initial.trainingNeeds);
   const [cp, setCp] = useState<CareerPlan[]>(initial.careerPlans);
@@ -127,7 +131,7 @@ export function GrowthPlanEditableForm({
     (e: FormEvent) => {
       e.preventDefault();
       setShowSaved(false);
-      onSave(toPayload(overallAssessment, sw, tn, cp, dn, promotionRecommendation)).then((success) => {
+      onSave(toPayload(overallAssessment, sw, tn, cp, dn, promotionRecommendation, potentialRating)).then((success) => {
         if (success) {
           if (savedTimerRef.current) clearTimeout(savedTimerRef.current);
           setShowSaved(true);
@@ -135,7 +139,7 @@ export function GrowthPlanEditableForm({
         }
       });
     },
-    [onSave, overallAssessment, sw, tn, cp, dn, promotionRecommendation],
+    [onSave, overallAssessment, sw, tn, cp, dn, promotionRecommendation, potentialRating],
   );
 
   return (
@@ -187,6 +191,36 @@ export function GrowthPlanEditableForm({
               value={promotionRecommendation}
               onChange={(e) => setPromotionRecommendation(e.target.value)}
             />
+          </CardContent>
+        </Card>
+
+        <Card className="shadow-sm">
+          <CardHeader className="bg-gradient-to-r from-primary-light to-white border-b border-gray-200 px-6 py-4">
+            <CardTitle className="text-lg font-semibold text-gray-900">Potential</CardTitle>
+          </CardHeader>
+          <CardContent className="px-6 py-6">
+            <label htmlFor="potential-rating" className="text-sm font-medium text-gray-900 block mb-1">
+              Potential rating
+            </label>
+            <p className="text-xs text-gray-500 mb-2">
+              Optional — feeds the 9-box talent grid (Reports). Independent of this
+              cycle&rsquo;s performance score: this is your judgment of the employee&rsquo;s
+              future potential, not how they performed this period.
+            </p>
+            <Select
+              id="potential-rating"
+              aria-label="Potential rating"
+              placeholder="Not rated"
+              value={potentialRating ?? ""}
+              onChange={(e) => setPotentialRating(e.target.value ? (e.target.value as PotentialRating) : null)}
+              className="max-w-xs"
+            >
+              {(Object.entries(POTENTIAL_RATING_LABELS) as [PotentialRating, string][]).map(([value, label]) => (
+                <option key={value} value={value}>
+                  {label}
+                </option>
+              ))}
+            </Select>
           </CardContent>
         </Card>
 

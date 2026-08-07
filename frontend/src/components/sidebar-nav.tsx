@@ -63,6 +63,7 @@ const REPORTS_CHILDREN: readonly NavGroupItem[] = [
   // { label: "Descriptor Config", href: "/reports/descriptor-config", allowedRoles: ["HR_ADMIN"] },
   { label: "Trend", href: "/reports/trend", allowedRoles: ["HR_ADMIN", "SYSTEM_ADMIN", "HR_OFFICER", "EXECUTIVE"] },
   { label: "Rating Variance", href: "/reports/variance", allowedRoles: ["HR_ADMIN", "SYSTEM_ADMIN", "HR_OFFICER", "EXECUTIVE"] },
+  { label: "9-Box Talent Grid", href: "/reports/nine-box", allowedRoles: ["HR_ADMIN", "SYSTEM_ADMIN", "HR_OFFICER", "EXECUTIVE"] },
 ] as const;
 
 const NAV_ENTRIES: readonly NavEntry[] = [

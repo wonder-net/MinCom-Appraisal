@@ -66,6 +66,7 @@ import {
   CrossCycleTrendPage,
   ScoreDescriptorConfigPage,
   SelfVsManagerVariancePage,
+  NineBoxPage,
 } from "@/features/reports";
 import { EmployeeListPage, EmployeeProfilePage } from "@/features/employees";
 import { AuditLogPage } from "@/features/audit";
@@ -336,6 +337,17 @@ export default function App() {
                     fallback={<Navigate to="/unauthorized" replace />}
                   >
                     <SelfVsManagerVariancePage />
+                  </RoleGuard>
+                }
+              />
+              <Route
+                path="nine-box"
+                element={
+                  <RoleGuard
+                    roles={["HR_ADMIN", "SYSTEM_ADMIN", "HR_OFFICER", "EXECUTIVE"]}
+                    fallback={<Navigate to="/unauthorized" replace />}
+                  >
+                    <NineBoxPage />
                   </RoleGuard>
                 }
               />

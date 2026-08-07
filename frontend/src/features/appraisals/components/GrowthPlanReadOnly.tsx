@@ -7,6 +7,7 @@
 
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import type { GrowthPlan } from "@/types";
+import { POTENTIAL_RATING_LABELS } from "@/types";
 import { ReadOnlyField } from "./ReadOnlyField";
 import { swTypeLabel, priorityLabel, sortByPriority } from "@/utils/growth-plan-helpers";
 
@@ -140,6 +141,21 @@ export function GrowthPlanReadOnly({ growthPlan }: GrowthPlanReadOnlyProps) {
             <ReadOnlyField
               label="Recommendation"
               value={growthPlan.promotion_recommendation || "—"}
+            />
+          </dl>
+        </CardContent>
+      </Card>
+
+      {/* Potential — feeds the 9-box talent grid (Reports) */}
+      <Card className="shadow-sm">
+        <CardHeader className="bg-gradient-to-r from-primary-light to-white border-b border-gray-200 px-6 py-4">
+          <CardTitle className="text-lg font-semibold text-gray-900">Potential</CardTitle>
+        </CardHeader>
+        <CardContent className="px-6 py-6">
+          <dl>
+            <ReadOnlyField
+              label="Potential rating"
+              value={growthPlan.potential_rating ? POTENTIAL_RATING_LABELS[growthPlan.potential_rating] : "Not rated"}
             />
           </dl>
         </CardContent>

@@ -425,6 +425,19 @@ export interface DevelopmentNeed {
 }
 
 /**
+ * 9-box talent grid's "potential" axis (product roadmap item, not one
+ * of the 11 original HR change requests) — set by the manager during
+ * growth planning, optional.
+ */
+export type PotentialRating = "LOW" | "MEDIUM" | "HIGH";
+
+export const POTENTIAL_RATING_LABELS: Record<PotentialRating, string> = {
+  LOW: "Low Potential",
+  MEDIUM: "Medium Potential",
+  HIGH: "High Potential",
+};
+
+/**
  * Full growth plan returned by the API.
  */
 export interface GrowthPlan {
@@ -433,6 +446,8 @@ export interface GrowthPlan {
   overall_assessment: string;
   /** Shown on the appraisal report just before the Signatures section. */
   promotion_recommendation: string;
+  /** 9-box grid input — null when the manager hasn't rated it yet. */
+  potential_rating: PotentialRating | null;
   strengths_weaknesses: StrengthWeakness[];
   training_needs: TrainingNeed[];
   career_plans: CareerPlan[];
@@ -449,6 +464,7 @@ export interface GrowthPlan {
 export interface GrowthPlanPayload {
   overall_assessment: string;
   promotion_recommendation: string;
+  potential_rating: PotentialRating | null;
   strengths_weaknesses: Omit<StrengthWeakness, "id">[];
   training_needs: Omit<TrainingNeed, "id">[];
   career_plans: Omit<CareerPlan, "id">[];

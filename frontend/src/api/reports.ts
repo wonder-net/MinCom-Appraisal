@@ -707,3 +707,57 @@ export async function getEmployeeAppraisalHistory(
   );
   return response.data;
 }
+
+// ---------------------------------------------------------------------------
+// 9-Box Talent Grid (product roadmap item, not one of the 11 HR change
+// requests)
+// ---------------------------------------------------------------------------
+
+export type NineBoxTier = "LOW" | "MEDIUM" | "HIGH";
+
+/**
+ * A finalized employee's appraisal, positioned on the grid.
+ */
+export interface NineBoxEmployee {
+  appraisal_id: string;
+  employee_id: string;
+  employee_number: string;
+  employee_name: string;
+  department_name: string;
+  total_score: string;
+  performance_descriptor: string | null;
+}
+
+/**
+ * One of the 9 grid cells. `grid` always contains exactly 9 of these,
+ * one per (performance, potential) combination, even when empty.
+ */
+export interface NineBoxCell {
+  performance: NineBoxTier;
+  potential: NineBoxTier;
+  count: number;
+  employees: NineBoxEmployee[];
+}
+
+/**
+ * Response shape for the 9-box talent grid report endpoint.
+ */
+export interface NineBoxReport {
+  cycle_id: string | null;
+  total_finalised: number;
+  rated_count: number;
+  unrated_count: number;
+  unrated_employees: NineBoxEmployee[];
+  grid: NineBoxCell[];
+}
+
+/**
+ * Fetch the 9-box talent grid report.
+ * GET /api/v1/reports/nine-box/
+ */
+export async function getNineBox(cycleId?: string): Promise<NineBoxReport> {
+  const response = await apiClient.get<NineBoxReport>(
+    `reports/nine-box/${buildCycleQuery(cycleId)}`,
+  );
+  return response.data;
+}

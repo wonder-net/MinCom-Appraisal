@@ -123,12 +123,12 @@ beforeEach(() => {
 });
 
 describe("ReportsLayout", () => {
-  it("renders all 12 sub-nav links for HR_ADMIN", () => {
+  it("renders all 13 sub-nav links for HR_ADMIN", () => {
     renderLayout();
 
     const nav = screen.getByLabelText("Report pages");
     const links = nav.querySelectorAll("a");
-    expect(links).toHaveLength(12);
+    expect(links).toHaveLength(13);
 
     expect(screen.getByText("Dashboard")).toBeInTheDocument();
     expect(screen.getByText("Unapprised Employees")).toBeInTheDocument();
@@ -142,9 +142,10 @@ describe("ReportsLayout", () => {
     expect(screen.getByText("Audit Compliance")).toBeInTheDocument();
     expect(screen.getByText("Trend")).toBeInTheDocument();
     expect(screen.getByText("Rating Variance")).toBeInTheDocument();
+    expect(screen.getByText("9-Box Talent Grid")).toBeInTheDocument();
   });
 
-  it("renders 7 sub-nav links for EXECUTIVE", () => {
+  it("renders 8 sub-nav links for EXECUTIVE", () => {
     mockUseAuth.mockReturnValue({
       user: {
         id: "u-exec",
@@ -168,7 +169,7 @@ describe("ReportsLayout", () => {
 
     const nav = screen.getByLabelText("Report pages");
     const links = nav.querySelectorAll("a");
-    expect(links).toHaveLength(7);
+    expect(links).toHaveLength(8);
 
     expect(screen.getByText("Dashboard")).toBeInTheDocument();
     expect(screen.getByText("Performance Distribution")).toBeInTheDocument();
@@ -177,6 +178,7 @@ describe("ReportsLayout", () => {
     expect(screen.getByText("Career Pipeline")).toBeInTheDocument();
     expect(screen.getByText("Trend")).toBeInTheDocument();
     expect(screen.getByText("Rating Variance")).toBeInTheDocument();
+    expect(screen.getByText("9-Box Talent Grid")).toBeInTheDocument();
 
     // HR-only tabs should not appear
     expect(screen.queryByText("Unapprised Employees")).not.toBeInTheDocument();

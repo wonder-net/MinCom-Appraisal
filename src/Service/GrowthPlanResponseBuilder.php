@@ -39,6 +39,8 @@ final class GrowthPlanResponseBuilder
             'overall_assessment' => $growthPlan->getOverallAssessment(),
             // HR change request #11.
             'promotion_recommendation' => $growthPlan->getPromotionRecommendation(),
+            // 9-box talent grid (product roadmap item).
+            'potential_rating' => $growthPlan->getPotentialRating()?->value,
             'strengths_weaknesses' => array_map(
                 $this->buildStrengthWeakness(...),
                 $this->strengthsWeaknesses->findByGrowthPlanOrdered($growthPlan),

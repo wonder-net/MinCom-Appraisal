@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\GrowthPlan;
 
 use App\Enum\GrowthPlanPriority;
+use App\Enum\PotentialRating;
 use App\Enum\StrengthWeaknessType;
 use App\Enum\TrainingNeedPriority;
 use App\Enum\TrainingNeedType;
@@ -50,6 +51,20 @@ final class GrowthPlanWriteValidator
             }
         }
 
+        // 9-box talent grid (product roadmap item): optional, explicitly
+        // nullable (send null to clear a previously-set rating, same
+        // "field present but empty" convention DRF/this port uses
+        // elsewhere — see manager_id in the admin-user processors).
+        $hasPotentialRating = array_key_exists('potential_rating', $payload);
+        $potentialRating = null;
+        if ($hasPotentialRating && $payload['potential_rating'] !== null) {
+            $raw = $payload['potential_rating'];
+            $potentialRating = is_string($raw) ? PotentialRating::tryFrom($raw) : null;
+            if ($potentialRating === null) {
+                $errors['potential_rating'] = sprintf('"%s" is not a valid choice.', (string) $raw);
+            }
+        }
+
         $hasSw = array_key_exists('strengths_weaknesses', $payload);
         $strengthsWeaknesses = $hasSw ? $this->validateStrengthsWeaknesses($payload['strengths_weaknesses'], $errors) : [];
 
@@ -71,6 +86,8 @@ final class GrowthPlanWriteValidator
             overallAssessment: $overallAssessment,
             hasPromotionRecommendation: $hasPromotionRecommendation,
             promotionRecommendation: $promotionRecommendation,
+            hasPotentialRating: $hasPotentialRating,
+            potentialRating: $potentialRating,
             hasStrengthsWeaknesses: $hasSw,
             strengthsWeaknesses: $strengthsWeaknesses,
             hasTrainingNeeds: $hasTn,

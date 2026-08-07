@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Entity;
 
+use App\Enum\PotentialRating;
 use App\Repository\GrowthPlanRepository;
 use Doctrine\ORM\Mapping as ORM;
 use Symfony\Component\Uid\Uuid;
@@ -40,6 +41,17 @@ class GrowthPlan
      */
     #[ORM\Column(type: 'encrypted_string', nullable: true)]
     private ?string $promotionRecommendation = null;
+
+    /**
+     * 9-box talent grid's "potential" axis (product roadmap item, not
+     * one of the 11 HR change requests) — set by the manager, optional.
+     * A plain enum column, not encrypted_string: matches how every
+     * other enum-typed field on this app (classification, roles,
+     * statuses) is stored — encryption on this entity is reserved for
+     * genuinely free-text content, not a bounded set of choices.
+     */
+    #[ORM\Column(type: 'string', length: 20, enumType: PotentialRating::class, nullable: true)]
+    private ?PotentialRating $potentialRating = null;
 
     #[ORM\Column(type: 'datetime_immutable')]
     private \DateTimeImmutable $createdAt;
@@ -90,6 +102,16 @@ class GrowthPlan
     public function setPromotionRecommendation(?string $promotionRecommendation): void
     {
         $this->promotionRecommendation = $promotionRecommendation;
+    }
+
+    public function getPotentialRating(): ?PotentialRating
+    {
+        return $this->potentialRating;
+    }
+
+    public function setPotentialRating(?PotentialRating $potentialRating): void
+    {
+        $this->potentialRating = $potentialRating;
     }
 
     public function getCreatedAt(): \DateTimeImmutable

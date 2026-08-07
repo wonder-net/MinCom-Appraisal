@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace App\GrowthPlan;
 
+use App\Enum\PotentialRating;
+
 /**
  * Result of GrowthPlanWriteValidator::validate(). Each `has*` flag
  * mirrors Django's `"key" in request.data` presence check, used by
@@ -25,6 +27,12 @@ final class GrowthPlanWriteData
         public readonly string $overallAssessment,
         public readonly bool $hasPromotionRecommendation,
         public readonly string $promotionRecommendation,
+        // 9-box talent grid (product roadmap item): optional, unlike
+        // the other fields here has no accompanying string default —
+        // null is itself a valid, meaningful value ("not rated"), not
+        // just "field absent".
+        public readonly bool $hasPotentialRating,
+        public readonly ?PotentialRating $potentialRating,
         public readonly bool $hasStrengthsWeaknesses,
         public readonly array $strengthsWeaknesses,
         public readonly bool $hasTrainingNeeds,

@@ -41,6 +41,7 @@ const NAV_TABS: readonly NavTab[] = [
   // { label: "Descriptor Config", to: "/reports/descriptor-config", roles: ["HR_ADMIN"], end: false },
   { label: "Trend", to: "/reports/trend", roles: ["HR_ADMIN", "EXECUTIVE"], end: false },
   { label: "Rating Variance", to: "/reports/variance", roles: ["HR_ADMIN", "EXECUTIVE"], end: false },
+  { label: "9-Box Talent Grid", to: "/reports/nine-box", roles: ["HR_ADMIN", "EXECUTIVE"], end: false },
 ] as const;
 
 // ---------------------------------------------------------------------------

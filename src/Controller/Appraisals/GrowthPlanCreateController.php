@@ -69,10 +69,12 @@ final class GrowthPlanCreateController
             if ($existing !== null) {
                 $existing->setOverallAssessment($data->overallAssessment);
                 $existing->setPromotionRecommendation($data->promotionRecommendation);
+                $existing->setPotentialRating($data->potentialRating);
                 $growthPlan = $existing;
             } else {
                 $growthPlan = new GrowthPlan($appraisal, $data->overallAssessment);
                 $growthPlan->setPromotionRecommendation($data->promotionRecommendation);
+                $growthPlan->setPotentialRating($data->potentialRating);
                 $this->em->persist($growthPlan);
                 $this->em->flush();
             }

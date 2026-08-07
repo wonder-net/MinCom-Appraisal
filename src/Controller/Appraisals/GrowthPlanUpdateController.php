@@ -79,6 +79,9 @@ final class GrowthPlanUpdateController
             if ($data->hasPromotionRecommendation) {
                 $growthPlan->setPromotionRecommendation($data->promotionRecommendation);
             }
+            if ($data->hasPotentialRating) {
+                $growthPlan->setPotentialRating($data->potentialRating);
+            }
             if ($data->hasStrengthsWeaknesses) {
                 $this->childrenReplacer->replaceStrengthsWeaknesses($growthPlan, $data->strengthsWeaknesses);
             }

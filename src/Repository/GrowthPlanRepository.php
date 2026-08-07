@@ -41,4 +41,33 @@ class GrowthPlanRepository extends ServiceEntityRepository
             ->setLockMode(LockMode::PESSIMISTIC_WRITE)
             ->getOneOrNullResult();
     }
+
+    /**
+     * Batch lookup for NineBoxReportBuilder — avoids one query per
+     * appraisal when building the grid for an entire cycle. Keyed by
+     * appraisal ID string for O(1) lookup by the caller.
+     *
+     * @param list<Appraisal> $appraisals
+     * @return array<string, GrowthPlan>
+     */
+    public function findByAppraisalsIndexed(array $appraisals): array
+    {
+        if ($appraisals === []) {
+            return [];
+        }
+
+        $rows = $this->createQueryBuilder('gp')
+            ->where('gp.appraisal IN (:appraisals)')
+            ->setParameter('appraisals', $appraisals)
+            ->getQuery()
+            ->getResult();
+
+        $indexed = [];
+        foreach ($rows as $growthPlan) {
+            \assert($growthPlan instanceof GrowthPlan);
+            $indexed[(string) $growthPlan->getAppraisal()->getId()] = $growthPlan;
+        }
+
+        return $indexed;
+    }
 }

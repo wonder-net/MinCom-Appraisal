@@ -33,6 +33,7 @@ export { AuditCompliancePage } from "./pages/AuditCompliancePage";
 export { CrossCycleTrendPage } from "./pages/CrossCycleTrendPage";
 export { ScoreDescriptorConfigPage } from "./pages/ScoreDescriptorConfigPage";
 export { SelfVsManagerVariancePage } from "./pages/SelfVsManagerVariancePage";
+export { NineBoxPage } from "./pages/NineBoxPage";
 
 // Shared components
 export { DepartmentDrillDown } from "./components/DepartmentDrillDown";
