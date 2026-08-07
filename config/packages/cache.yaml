@@ -1,19 +1,28 @@
 framework:
     cache:
-        # Unique name of your app: used to compute stable namespaces for cache keys.
-        #prefix_seed: your_vendor_name/app_name
+        # Namespaces cache keys per-environment so dev/prod share one Redis
+        # instance/DB without dev's cache:clear ever touching prod's keys
+        # (or, locally, without dev and test colliding — though test
+        # reverts to the filesystem adapter below anyway).
+        prefix_seed: 'mincom_appraisal/%kernel.environment%'
 
-        # The "app" cache stores to the filesystem by default.
-        # The data in this cache should persist between deploys.
-        # Other options include:
-
-        # Redis
-        #app: cache.adapter.redis
-        #default_redis_provider: redis://localhost
-
-        # APCu (not recommended with heavy random-write workloads as memory fragmentation can cause perf issues)
-        #app: cache.adapter.apcu
+        # The "app" cache backs cache.app (ReportsCacheService's
+        # TagAwareCacheInterface, CycleListCache) AND — per
+        # rate_limiter.yaml's comment — the rate limiter's storage
+        # (cache.rate_limiter pool defaults to cache.app), so this one
+        # switch covers both. Filesystem doesn't survive across app
+        # servers/workers; Redis does, which is the whole point.
+        app: cache.adapter.redis
+        default_redis_provider: '%env(REDIS_URL)%'
 
         # Namespaced pools use the above "app" backend by default
         #pools:
             #my.dedicated.cache: null
+
+when@test:
+    framework:
+        cache:
+            # No Redis service in CI (.github/workflows/ci.yml) or needed
+            # for a single-process PHPUnit run — filesystem keeps the test
+            # suite hermetic and avoids sharing state with dev's Redis DB.
+            app: cache.adapter.filesystem

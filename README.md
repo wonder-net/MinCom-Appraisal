@@ -110,30 +110,68 @@ up yet).
 
 ## Background jobs (Messenger + Scheduler)
 
-Async bulk-import jobs and the daily overdue-appraisal-reminder job are
-dispatched via Symfony Messenger. Locally (no docker-compose), run a
-consumer in a separate terminal:
+Async bulk-import jobs, workflow-notification emails, and the daily
+overdue-appraisal-reminder job are dispatched via Symfony Messenger.
+Locally, run consumers in separate terminals:
 
 ```bash
-php bin/console messenger:consume async scheduler_main -vv
+php bin/console messenger:consume async notification_email scheduler_main -vv
 ```
 
 `scheduler_main` is Symfony Scheduler's replacement for Django's Celery
 Beat — it fires `App\Message\SendOverdueRemindersMessage` on the cron
 schedule in `src/Scheduler/MainSchedule.php` (daily 08:00, matching
-Django's `CELERY_BEAT_SCHEDULE`). Without a consumer running, bulk
-imports will sit queued and overdue reminders will never fire — the API
-itself works fine either way.
+Django's `CELERY_BEAT_SCHEDULE`). Without a consumer running, messages
+just sit queued (in Redis, or in the `messenger_messages` Doctrine table
+if you're on the `.env` default — see [Redis](#redis) below) and nothing
+fires — the API itself works fine either way, notifications/emails and
+reminders just don't get delivered until a consumer runs.
 
 ## Email
 
 `symfony/mailer` is installed with `MAILER_DSN=null://null` by default
 (mail is silently discarded — safe for local dev with no SMTP server).
-To actually see sent mail, point it at the bundled `mailpit` catcher
-(`docker-compose.yml`) or set a real transport DSN. See `.env` for
-details. The four wired call sites (password reset, admin-created-user
-welcome, resend-invitation, bulk-import-created-user welcome) all send
-through `App\Service\EmailService`.
+This dev machine's `.env.local` instead points it at a local `mailpit`
+catcher (`brew install mailpit && mailpit`, SMTP on `:1025`, web UI at
+`http://localhost:8025`) — real send/receive, nothing mocked. Production
+should point `MAILER_DSN` at Postmark's SMTP relay instead. See `.env`
+for the full picture. The wired call sites (password reset,
+admin-created-user welcome, resend-invitation, bulk-import-created-user
+welcome, and every workflow-transition notification routed through
+`App\Service\NotificationService`) all send through
+`App\Service\EmailService`.
+
+## Redis
+
+`config/packages/cache.yaml` backs the `cache.app` pool with Redis
+(`predis/predis`, no PHP extension required for this part) — this is
+what `ReportsCacheService`/`CycleListCache` use, and — per
+`rate_limiter.yaml`'s comment — what the rate limiter's storage
+transparently rides along on, since `cache.rate_limiter` defaults to
+`cache.app`. Test env (`when@test`) reverts `cache.app` to the
+filesystem adapter, since CI has no Redis service and a single PHPUnit
+run doesn't need one.
+
+Messenger's Redis transport (`symfony/redis-messenger`) is a separate
+piece and, unlike the cache adapter, genuinely requires the native
+`redis` PHP extension (or `Relay`) — Predis isn't enough, it fails at
+runtime with `Class "Relay\Relay" not found` if neither is loaded. Both
+this repo's `php bin/console` PHP and MAMP's own `php-cgi` need it
+enabled separately (they're different PHP installs — see the "How this
+is actually served" section above); `pecl install igbinary redis` (in
+that order — `redis.so` depends on `igbinary.so`) handles the CLI one,
+and MAMP's needs the same two `extension=` lines added to
+`/Applications/MAMP/bin/php/<version>/conf/php.ini` plus an Apache/fcgi
+restart to pick it up.
+
+Locally: `brew install redis && brew services start redis` (survives
+reboots, same pattern as `mailpit`). `.env`'s committed `REDIS_URL`
+default (`redis://localhost:6379`) and Doctrine-backed
+`MESSENGER_TRANSPORT_DSN` are safe, infra-free defaults so a bare
+`composer install` never fails container compilation; `.env.local`
+overrides `MESSENGER_TRANSPORT_DSN` to `redis://localhost:6379/messages`
+once Redis is actually running. `docker-compose.yml` runs its own Redis
+container and wires the same DSNs for the containerized flow.
 
 ## Rate limiting
 

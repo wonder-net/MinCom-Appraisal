@@ -9,9 +9,12 @@ framework:
 
         transports:
             # https://symfony.com/doc/current/messenger.html#transport-configuration
-            # Celery replacement (see plan): local dev uses the Doctrine transport
-            # (no Redis available outside containers); docker-compose.yml overrides
-            # MESSENGER_TRANSPORT_DSN to Redis for container/production parity.
+            # Celery replacement (see plan). .env's committed default is the
+            # Doctrine transport (zero extra infra, so `composer install`
+            # alone always works); .env.local/docker-compose.yml override
+            # MESSENGER_TRANSPORT_DSN to redis://.../messages once Redis is
+            # actually running (see config/packages/cache.yaml — the same
+            # Redis instance backs cache.app/rate limiting).
             async: '%env(MESSENGER_TRANSPORT_DSN)%'
             # Same DSN as `async` but its own retry_strategy, matching
             # Django's send_notification_email Celery task

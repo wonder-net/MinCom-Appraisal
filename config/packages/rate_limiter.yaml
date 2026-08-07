@@ -6,8 +6,9 @@
 # (mirroring DRF's ScopedRateThrottle ident resolution).
 #
 # Storage defaults to the `cache.rate_limiter` pool (backed by `cache.app`,
-# filesystem in dev) — fine for a single app server; point `cache.app` at
-# Redis in production so limits are shared correctly across workers.
+# see config/packages/cache.yaml — Redis in dev/prod, filesystem in test)
+# so limits are correctly shared across workers/app servers, not just
+# per-process.
 framework:
     rate_limiter:
         anon:

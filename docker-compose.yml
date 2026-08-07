@@ -50,6 +50,7 @@ services:
       - APP_ENV=dev
       - DATABASE_URL=postgresql://mincom_symfony:devpassword@db:5432/mincom_appraisal_symfony?serverVersion=16&charset=utf8
       - MESSENGER_TRANSPORT_DSN=redis://redis:6379/messages
+      - REDIS_URL=redis://redis:6379
       # mailpit catches all outbound mail here — web UI at localhost:8026.
       - MAILER_DSN=smtp://mailpit:1025
     depends_on:
@@ -88,6 +89,7 @@ services:
       - APP_ENV=dev
       - DATABASE_URL=postgresql://mincom_symfony:devpassword@db:5432/mincom_appraisal_symfony?serverVersion=16&charset=utf8
       - MESSENGER_TRANSPORT_DSN=redis://redis:6379/messages
+      - REDIS_URL=redis://redis:6379
       - MAILER_DSN=smtp://mailpit:1025
     depends_on:
       db:
@@ -120,6 +122,7 @@ services:
       - APP_ENV=dev
       - DATABASE_URL=postgresql://mincom_symfony:devpassword@db:5432/mincom_appraisal_symfony?serverVersion=16&charset=utf8
       - MESSENGER_TRANSPORT_DSN=redis://redis:6379/messages
+      - REDIS_URL=redis://redis:6379
       - MAILER_DSN=smtp://mailpit:1025
     depends_on:
       db:
