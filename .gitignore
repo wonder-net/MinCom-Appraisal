@@ -48,6 +48,11 @@
 /frontend/node_modules/
 /frontend/dist/
 /frontend/.env.local
+# Playwright's own run artifacts (screenshots/traces/HTML report) —
+# regenerated every run, not source.
+/frontend/test-results/
+/frontend/playwright-report/
+/frontend/playwright/.cache/
 ###< frontend ###
 
 .DS_Store
