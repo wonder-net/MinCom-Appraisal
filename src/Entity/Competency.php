@@ -144,4 +144,9 @@ class Competency
         $lines = array_values(array_filter(array_map('trim', explode("\n", $text ?? '')), static fn (string $line) => $line !== ''));
         $this->subCompetencies = $lines !== [] ? $lines : null;
     }
+
+    public function __toString(): string
+    {
+        return $this->name;
+    }
 }

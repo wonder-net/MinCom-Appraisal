@@ -105,4 +105,9 @@ class BscPerspective
     {
         $this->maxKdCountMgr = $maxKdCountMgr;
     }
+
+    public function __toString(): string
+    {
+        return $this->name;
+    }
 }

@@ -37,6 +37,12 @@
     # routes are plural or distinct action words (admin/users,
     # admin/cycles, admin/competencies) — matched with a trailing
     # (/|$) boundary so e.g. ^admin/user never swallows admin/users.
+    # IMPORTANT: every AbstractCrudController adds a new entity slug —
+    # add its RewriteRule here too (`bin/console debug:router | grep
+    # admin_.*_index` lists them all) or it silently falls through to
+    # the React-shell catch-all below and renders the SPA's login page
+    # instead of the admin panel (exactly what happened here — a full
+    # EasyAdmin pass added 20 new controllers, discovered live).
     RewriteRule ^admin$ %{ENV:BASE}/index.php [L]
     RewriteRule ^admin/login$ %{ENV:BASE}/index.php [L]
     RewriteRule ^admin/logout$ %{ENV:BASE}/index.php [L]
@@ -47,6 +53,26 @@
     RewriteRule ^admin/competency(/|$) %{ENV:BASE}/index.php [L]
     RewriteRule ^admin/bsc-perspective(/|$) %{ENV:BASE}/index.php [L]
     RewriteRule ^admin/notification(/|$) %{ENV:BASE}/index.php [L]
+    RewriteRule ^admin/appraisal-cycle(/|$) %{ENV:BASE}/index.php [L]
+    RewriteRule ^admin/appraisal(/|$) %{ENV:BASE}/index.php [L]
+    RewriteRule ^admin/key-deliverable(/|$) %{ENV:BASE}/index.php [L]
+    RewriteRule ^admin/competency-rating(/|$) %{ENV:BASE}/index.php [L]
+    RewriteRule ^admin/growth-plan(/|$) %{ENV:BASE}/index.php [L]
+    RewriteRule ^admin/career-plan(/|$) %{ENV:BASE}/index.php [L]
+    RewriteRule ^admin/development-need(/|$) %{ENV:BASE}/index.php [L]
+    RewriteRule ^admin/training-need(/|$) %{ENV:BASE}/index.php [L]
+    RewriteRule ^admin/strength-weakness(/|$) %{ENV:BASE}/index.php [L]
+    RewriteRule ^admin/signature(/|$) %{ENV:BASE}/index.php [L]
+    RewriteRule ^admin/comment(/|$) %{ENV:BASE}/index.php [L]
+    RewriteRule ^admin/calibration-session(/|$) %{ENV:BASE}/index.php [L]
+    RewriteRule ^admin/score-descriptor(/|$) %{ENV:BASE}/index.php [L]
+    RewriteRule ^admin/bulk-import-job(/|$) %{ENV:BASE}/index.php [L]
+    RewriteRule ^admin/appraisal-bulk-import-job(/|$) %{ENV:BASE}/index.php [L]
+    RewriteRule ^admin/user-bulk-import-job(/|$) %{ENV:BASE}/index.php [L]
+    RewriteRule ^admin/refresh-token(/|$) %{ENV:BASE}/index.php [L]
+    RewriteRule ^admin/recovery-code(/|$) %{ENV:BASE}/index.php [L]
+    RewriteRule ^admin/password-reset-token(/|$) %{ENV:BASE}/index.php [L]
+    RewriteRule ^admin/audit-log(/|$) %{ENV:BASE}/index.php [L]
 
     # Everything else is a client-side SPA route (or a 404) — serve the
     # React shell and let client-side routing take over, instead of

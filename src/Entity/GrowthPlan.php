@@ -123,4 +123,9 @@ class GrowthPlan
     {
         return $this->updatedAt;
     }
+
+    public function __toString(): string
+    {
+        return sprintf('Growth Plan — %s', $this->appraisal);
+    }
 }

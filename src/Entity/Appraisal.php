@@ -277,4 +277,14 @@ class Appraisal
     {
         return $this->updatedAt;
     }
+
+    /**
+     * Lets EasyAdmin's AssociationField (GrowthPlan, KeyDeliverable,
+     * CompetencyRating, Signature, Comment all point back here) render
+     * a readable label instead of "Appraisal #<uuid>".
+     */
+    public function __toString(): string
+    {
+        return sprintf('%s — %s (%s)', $this->employee, $this->cycle, $this->status->value);
+    }
 }
