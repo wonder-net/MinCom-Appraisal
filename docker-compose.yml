@@ -1,19 +1,40 @@
 # symfony-backend/docker-compose.yml — isolated local dev environment for the
 # Symfony rewrite. Fully separate from the root docker-compose*.yml (Django
-# stack): own network, own Postgres/Redis instances, distinct host ports, so
+# stack): own network, own MySQL/Redis instances, distinct host ports, so
 # both stacks can run side by side during development. Not wired into the
 # Django nginx or shared by any volume/network — see the migration plan
 # (build-in-isolation, single cutover at the end).
 #
-# NOTE: written for future container-based use; not exercised in an
-# environment without Docker installed. Verify on first real use.
+# DB engine is MySQL, not Postgres: migrations/Version20260727144738.php
+# is the squashed result of an already-completed Postgres->MySQL engine
+# migration (see its own getDescription()) — this file just hadn't been
+# updated to match afterward. docker/php/Dockerfile only ever installed
+# pdo_mysql, so the previous postgres:16-alpine `db` service here could
+# never actually have worked.
+#
+# Verified end-to-end against a real Docker daemon (colima): build,
+# `doctrine:migrations:migrate` against a genuinely fresh MySQL 8.0
+# database (all 4 migrations, 0 errors), admin bootstrap, a real JWT
+# login round-trip, an encrypted-field read (FIELD_ENCRYPTION_KEY),
+# and Redis-backed cache/rate-limiter activity all confirmed working.
+# Found and fixed two real bugs in the process — neither hypothetical,
+# both reproduced live:
+#   - MySQL 8.0 enables binary logging by default, which blocks the
+#     baseline migration's SIGNAL-based triggers for any non-SUPER
+#     user (Error 1419) — needs --log-bin-trust-function-creators=1 on
+#     the `db` service (below). MAMP's local MySQL never surfaced this
+#     because that connection already has effective SUPER via root.
+#   - SKIP_INIT (documented in entrypoint.sh as required for the
+#     messenger-consume-* services) was never actually set anywhere,
+#     so those containers raced the `php` container over migrations on
+#     every startup.
 
 networks:
   symfony_internal:
     driver: bridge
 
 volumes:
-  symfony_postgres_data:
+  symfony_mysql_data:
   symfony_redis_data:
 
 services:
@@ -48,7 +69,7 @@ services:
         required: false
     environment:
       - APP_ENV=dev
-      - DATABASE_URL=postgresql://mincom_symfony:devpassword@db:5432/mincom_appraisal_symfony?serverVersion=16&charset=utf8
+      - DATABASE_URL=mysql://mincom_symfony:devpassword@db:3306/mincom_appraisal_symfony?serverVersion=8.0.32&charset=utf8mb4
       - MESSENGER_TRANSPORT_DSN=redis://redis:6379/messages
       - REDIS_URL=redis://redis:6379
       # mailpit catches all outbound mail here — web UI at localhost:8026.
@@ -87,10 +108,16 @@ services:
         required: false
     environment:
       - APP_ENV=dev
-      - DATABASE_URL=postgresql://mincom_symfony:devpassword@db:5432/mincom_appraisal_symfony?serverVersion=16&charset=utf8
+      - DATABASE_URL=mysql://mincom_symfony:devpassword@db:3306/mincom_appraisal_symfony?serverVersion=8.0.32&charset=utf8mb4
       - MESSENGER_TRANSPORT_DSN=redis://redis:6379/messages
       - REDIS_URL=redis://redis:6379
       - MAILER_DSN=smtp://mailpit:1025
+      # entrypoint.sh runs migrations/JWT-keypair-generation unless this
+      # is set — documented there as required for exactly this service,
+      # but never actually wired in until now: found by watching this
+      # container's own logs run `doctrine:migrations:migrate`
+      # concurrently with the `php` container on every startup.
+      - SKIP_INIT=true
     depends_on:
       db:
         condition: service_healthy
@@ -102,6 +129,11 @@ services:
       - .:/app
     user: "1001:1001"
     restart: unless-stopped
+    # The image's baked-in HEALTHCHECK (docker/php/Dockerfile) pings
+    # php-fpm — meaningless here, this container runs a CLI worker, not
+    # php-fpm, and reported "unhealthy" forever as a result.
+    healthcheck:
+      disable: true
 
   messenger-consume-notifications:
     build:
@@ -120,10 +152,11 @@ services:
         required: false
     environment:
       - APP_ENV=dev
-      - DATABASE_URL=postgresql://mincom_symfony:devpassword@db:5432/mincom_appraisal_symfony?serverVersion=16&charset=utf8
+      - DATABASE_URL=mysql://mincom_symfony:devpassword@db:3306/mincom_appraisal_symfony?serverVersion=8.0.32&charset=utf8mb4
       - MESSENGER_TRANSPORT_DSN=redis://redis:6379/messages
       - REDIS_URL=redis://redis:6379
       - MAILER_DSN=smtp://mailpit:1025
+      - SKIP_INIT=true
     depends_on:
       db:
         condition: service_healthy
@@ -135,26 +168,43 @@ services:
       - .:/app
     user: "1001:1001"
     restart: unless-stopped
+    healthcheck:
+      disable: true
 
   db:
-    image: postgres:16-alpine
+    # Matches docker/php/Dockerfile (pdo_mysql only, no pdo_pgsql) and
+    # migrations/Version20260727144738.php (MySQL-only DDL — ENGINE=
+    # InnoDB, SIGNAL-based triggers — squashed after this app's own
+    # Postgres->MySQL engine migration). Same major.minor as MAMP's
+    # locally-verified mysql80 (8.0.32) and CI's `mysql:8.0` service.
+    image: mysql:8.0
+    # Binary logging is ON by default on MySQL 8.0's own image (unlike
+    # 5.7) — without this flag, the baseline migration's two SIGNAL-based
+    # triggers (audit_log's append-only guard) fail outright for any
+    # non-SUPER user: "Error 1419: You do not have the SUPER privilege
+    # and binary logging is enabled". Found by actually running
+    # migrations against a genuinely fresh container, not by reading the
+    # migration — MAMP's local MySQL never surfaced this because that
+    # connection already has effective SUPER via its root account.
+    command: --log-bin-trust-function-creators=1
     environment:
-      POSTGRES_DB: mincom_appraisal_symfony
-      POSTGRES_USER: mincom_symfony
-      POSTGRES_PASSWORD: devpassword
+      MYSQL_DATABASE: mincom_appraisal_symfony
+      MYSQL_USER: mincom_symfony
+      MYSQL_PASSWORD: devpassword
+      MYSQL_ALLOW_EMPTY_PASSWORD: "yes" # only for the root user; app connects as mincom_symfony above
     ports:
-      - "5434:5432" # distinct from the Django stack's 5433
+      - "3307:3306" # distinct from this host's own MySQL installs (MAMP :8889, Homebrew :3306)
     networks:
       - symfony_internal
     volumes:
-      - symfony_postgres_data:/var/lib/postgresql/data
+      - symfony_mysql_data:/var/lib/mysql
     restart: unless-stopped
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U mincom_symfony -d mincom_appraisal_symfony"]
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "mincom_symfony", "-pdevpassword"]
       interval: 10s
       timeout: 5s
       retries: 5
-      start_period: 20s
+      start_period: 30s
 
   redis:
     image: redis:7-alpine

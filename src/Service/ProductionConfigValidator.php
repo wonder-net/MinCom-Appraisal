@@ -34,11 +34,19 @@ final class ProductionConfigValidator
      * Known dev-only placeholder values committed in `.env`. If any of
      * these are still active under APP_ENV=prod, the real secret was
      * never generated for this deployment.
+     *
+     * MUST be kept in sync with `.env` by hand — these are deliberately
+     * not read from `.env` itself (that would just compare a value
+     * against itself). Found stale once already (this constant hadn't
+     * been updated after the placeholders in `.env` were rotated, which
+     * silently defeated the whole check — a prod boot with the *current*
+     * dev placeholders would have sailed through undetected); re-verify
+     * this list against `.env` any time those placeholders change.
      */
     private const KNOWN_DEV_VALUES = [
-        'AUDIT_HMAC_KEY' => 'ef01269c78be63ad7035f3b0fbd14cca42890f5266683d9c72b61077ad130aa',
-        'FIELD_ENCRYPTION_KEY' => '18de00e22e7d18752b49426ebb0803f679f0371edc53878676bccec527320358',
-        'JWT_PASSPHRASE' => '2873b6b70610ca52cc8110965c1cdadac7f1f839d50e9fac8ab32381cd40c80e',
+        'AUDIT_HMAC_KEY' => 'e7e927e17e929208cbc2361de6158dedcae17932d122b3b0dd9e204a9cf420fe',
+        'FIELD_ENCRYPTION_KEY' => '65d9f447d28987836c7970841687a076586c8ad0d8c9cdd80e99cab88df7b820',
+        'JWT_PASSPHRASE' => 'ae01efc3ab9ca4819f179b2eb53a8fdcea80b3b42bc5e41a8beb6443eddf087b',
     ];
 
     /**

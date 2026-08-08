@@ -43,7 +43,7 @@ final class ProductionConfigValidatorTest extends TestCase
     public function testDoesNothingOutsideProd(): void
     {
         $_ENV['APP_SECRET'] = '';
-        $_ENV['FIELD_ENCRYPTION_KEY'] = '18de00e22e7d18752b49426ebb0803f679f0371edc53878676bccec527320358';
+        $_ENV['FIELD_ENCRYPTION_KEY'] = '65d9f447d28987836c7970841687a076586c8ad0d8c9cdd80e99cab88df7b820';
 
         // No exception — dev/test are allowed to use the committed placeholders.
         ProductionConfigValidator::validate('dev');
@@ -62,7 +62,7 @@ final class ProductionConfigValidatorTest extends TestCase
     public function testRejectsKnownDevFieldEncryptionKey(): void
     {
         $this->setAllToRealValues();
-        $_ENV['FIELD_ENCRYPTION_KEY'] = '18de00e22e7d18752b49426ebb0803f679f0371edc53878676bccec527320358';
+        $_ENV['FIELD_ENCRYPTION_KEY'] = '65d9f447d28987836c7970841687a076586c8ad0d8c9cdd80e99cab88df7b820';
 
         $this->expectException(\RuntimeException::class);
         $this->expectExceptionMessageMatches('/FIELD_ENCRYPTION_KEY/');
@@ -72,7 +72,7 @@ final class ProductionConfigValidatorTest extends TestCase
     public function testRejectsKnownDevAuditHmacKey(): void
     {
         $this->setAllToRealValues();
-        $_ENV['AUDIT_HMAC_KEY'] = 'ef01269c78be63ad7035f3b0fbd14cca42890f5266683d9c72b61077ad130aa';
+        $_ENV['AUDIT_HMAC_KEY'] = 'e7e927e17e929208cbc2361de6158dedcae17932d122b3b0dd9e204a9cf420fe';
 
         $this->expectException(\RuntimeException::class);
         $this->expectExceptionMessageMatches('/AUDIT_HMAC_KEY/');
@@ -82,7 +82,7 @@ final class ProductionConfigValidatorTest extends TestCase
     public function testRejectsKnownDevJwtPassphrase(): void
     {
         $this->setAllToRealValues();
-        $_ENV['JWT_PASSPHRASE'] = '2873b6b70610ca52cc8110965c1cdadac7f1f839d50e9fac8ab32381cd40c80e';
+        $_ENV['JWT_PASSPHRASE'] = 'ae01efc3ab9ca4819f179b2eb53a8fdcea80b3b42bc5e41a8beb6443eddf087b';
 
         $this->expectException(\RuntimeException::class);
         $this->expectExceptionMessageMatches('/JWT_PASSPHRASE/');
@@ -112,7 +112,7 @@ final class ProductionConfigValidatorTest extends TestCase
     public function testRejectsDevDatabasePassword(): void
     {
         $this->setAllToRealValues();
-        $_ENV['DATABASE_URL'] = 'postgresql://mincom_symfony:devpassword@127.0.0.1:5432/mincom_appraisal_symfony';
+        $_ENV['DATABASE_URL'] = 'mysql://mincom_symfony:devpassword@127.0.0.1:3306/mincom_appraisal_symfony';
 
         $this->expectException(\RuntimeException::class);
         $this->expectExceptionMessageMatches('/DATABASE_URL/');
@@ -123,10 +123,10 @@ final class ProductionConfigValidatorTest extends TestCase
     {
         $_ENV['APP_SECRET'] = '';
         $_ENV['TURNSTILE_SECRET_KEY'] = '';
-        $_ENV['AUDIT_HMAC_KEY'] = 'ef01269c78be63ad7035f3b0fbd14cca42890f5266683d9c72b61077ad130aa';
-        $_ENV['FIELD_ENCRYPTION_KEY'] = '18de00e22e7d18752b49426ebb0803f679f0371edc53878676bccec527320358';
-        $_ENV['JWT_PASSPHRASE'] = '2873b6b70610ca52cc8110965c1cdadac7f1f839d50e9fac8ab32381cd40c80e';
-        $_ENV['DATABASE_URL'] = 'postgresql://x:devpassword@host/db';
+        $_ENV['AUDIT_HMAC_KEY'] = 'e7e927e17e929208cbc2361de6158dedcae17932d122b3b0dd9e204a9cf420fe';
+        $_ENV['FIELD_ENCRYPTION_KEY'] = '65d9f447d28987836c7970841687a076586c8ad0d8c9cdd80e99cab88df7b820';
+        $_ENV['JWT_PASSPHRASE'] = 'ae01efc3ab9ca4819f179b2eb53a8fdcea80b3b42bc5e41a8beb6443eddf087b';
+        $_ENV['DATABASE_URL'] = 'mysql://x:devpassword@host/db';
 
         try {
             ProductionConfigValidator::validate('prod');
@@ -148,7 +148,7 @@ final class ProductionConfigValidatorTest extends TestCase
         // under (docker/php/Dockerfile's cache:warmup/assets:install
         // steps run before .env.prod.local exists on the real VM).
         $_ENV['APP_SECRET'] = '';
-        $_ENV['FIELD_ENCRYPTION_KEY'] = '18de00e22e7d18752b49426ebb0803f679f0371edc53878676bccec527320358';
+        $_ENV['FIELD_ENCRYPTION_KEY'] = '65d9f447d28987836c7970841687a076586c8ad0d8c9cdd80e99cab88df7b820';
         $_SERVER['argv'][1] = $command;
 
         ProductionConfigValidator::validate('prod');
@@ -181,6 +181,6 @@ final class ProductionConfigValidatorTest extends TestCase
         $_ENV['AUDIT_HMAC_KEY'] = str_repeat('a1', 32);
         $_ENV['FIELD_ENCRYPTION_KEY'] = str_repeat('b2', 32);
         $_ENV['JWT_PASSPHRASE'] = 'a-real-jwt-passphrase';
-        $_ENV['DATABASE_URL'] = 'postgresql://produser:realpassword@prod-db-host:5432/mincom_appraisal_symfony';
+        $_ENV['DATABASE_URL'] = 'mysql://produser:realpassword@prod-db-host:3306/mincom_appraisal_symfony';
     }
 }
