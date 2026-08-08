@@ -88,6 +88,23 @@ final class ProductionConfigValidator
             $errors[] = 'DATABASE_URL still contains the dev database password — point it at the real production database.';
         }
 
+        // .env.prod.local.dist's convention for "you must supply this
+        // yourself" values (external service credentials, the real
+        // production domain) is a REPLACE_WITH_* placeholder — unlike
+        // the dev-only values above, these can't be known in advance,
+        // so the only thing checkable is "did someone forget to
+        // replace it". Found by testing this validator against a
+        // freshly-generated .env.prod.local that had real crypto
+        // secrets but still-unfilled REPLACE_WITH_* markers for
+        // Turnstile/Postmark/the production domain: MUST_BE_NON_EMPTY's
+        // simple blank check passed it anyway, since a placeholder
+        // string isn't blank.
+        foreach (self::allEnvVars() as $var => $value) {
+            if (str_contains($value, 'REPLACE_WITH_')) {
+                $errors[] = sprintf('%s still contains an unfilled REPLACE_WITH_ placeholder (see .env.prod.local.dist).', $var);
+            }
+        }
+
         if ($errors !== []) {
             throw new \RuntimeException(
                 "Refusing to boot with APP_ENV=prod: insecure or missing configuration:\n  - ".implode("\n  - ", $errors),
@@ -100,6 +117,21 @@ final class ProductionConfigValidator
         $value = $_ENV[$name] ?? $_SERVER[$name] ?? getenv($name);
 
         return is_string($value) ? $value : '';
+    }
+
+    /**
+     * @return array<string, string>
+     */
+    private static function allEnvVars(): array
+    {
+        $vars = [];
+        foreach ($_ENV as $name => $value) {
+            if (is_string($name) && is_string($value)) {
+                $vars[$name] = $value;
+            }
+        }
+
+        return $vars;
     }
 
     private static function isBuildTimeCommand(): bool

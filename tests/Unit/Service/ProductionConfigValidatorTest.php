@@ -9,7 +9,7 @@ use PHPUnit\Framework\TestCase;
 
 final class ProductionConfigValidatorTest extends TestCase
 {
-    private const VARS = ['APP_SECRET', 'TURNSTILE_SECRET_KEY', 'AUDIT_HMAC_KEY', 'FIELD_ENCRYPTION_KEY', 'JWT_PASSPHRASE', 'DATABASE_URL'];
+    private const VARS = ['APP_SECRET', 'TURNSTILE_SECRET_KEY', 'AUDIT_HMAC_KEY', 'FIELD_ENCRYPTION_KEY', 'JWT_PASSPHRASE', 'DATABASE_URL', 'MAILER_DSN'];
 
     /** @var array<string, string|null> */
     private array $originalEnv = [];
@@ -116,6 +116,22 @@ final class ProductionConfigValidatorTest extends TestCase
 
         $this->expectException(\RuntimeException::class);
         $this->expectExceptionMessageMatches('/DATABASE_URL/');
+        ProductionConfigValidator::validate('prod');
+    }
+
+    public function testRejectsUnfilledReplaceWithPlaceholder(): void
+    {
+        // Real crypto secrets configured correctly (would otherwise pass)
+        // but an external-service credential from .env.prod.local.dist
+        // was never actually filled in — found by testing this validator
+        // against a freshly-generated .env.prod.local that had exactly
+        // this shape: MUST_BE_NON_EMPTY's blank check alone doesn't catch
+        // it, since a placeholder string isn't blank.
+        $this->setAllToRealValues();
+        $_ENV['MAILER_DSN'] = 'smtp://REPLACE_WITH_POSTMARK_TOKEN:REPLACE_WITH_POSTMARK_TOKEN@smtp.postmarkapp.com:587';
+
+        $this->expectException(\RuntimeException::class);
+        $this->expectExceptionMessageMatches('/MAILER_DSN.*REPLACE_WITH_/');
         ProductionConfigValidator::validate('prod');
     }
 
