@@ -102,4 +102,16 @@ class Department
     {
         return $this->updatedAt;
     }
+
+    /**
+     * Lets EasyAdmin's AssociationField (and anything else needing a
+     * plain-text label) render this sensibly instead of falling back to
+     * "Department #<uuid>" — every CRUD screen that links to a
+     * Department (Employee, and Department's own self-referential
+     * `parent`) benefits, not just one controller's field config.
+     */
+    public function __toString(): string
+    {
+        return $this->getFullLabel();
+    }
 }

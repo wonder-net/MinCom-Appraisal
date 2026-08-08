@@ -9,6 +9,7 @@ use App\Enum\EmployeeClassification;
 use EasyCorp\Bundle\EasyAdminBundle\Config\Action;
 use EasyCorp\Bundle\EasyAdminBundle\Config\Actions;
 use EasyCorp\Bundle\EasyAdminBundle\Config\Crud;
+use EasyCorp\Bundle\EasyAdminBundle\Config\Filters;
 use EasyCorp\Bundle\EasyAdminBundle\Controller\AbstractCrudController;
 use EasyCorp\Bundle\EasyAdminBundle\Field\AssociationField;
 use EasyCorp\Bundle\EasyAdminBundle\Field\BooleanField;
@@ -17,6 +18,9 @@ use EasyCorp\Bundle\EasyAdminBundle\Field\DateTimeField;
 use EasyCorp\Bundle\EasyAdminBundle\Field\IdField;
 use EasyCorp\Bundle\EasyAdminBundle\Field\ImageField;
 use EasyCorp\Bundle\EasyAdminBundle\Field\TextField;
+use EasyCorp\Bundle\EasyAdminBundle\Filter\BooleanFilter;
+use EasyCorp\Bundle\EasyAdminBundle\Filter\ChoiceFilter;
+use EasyCorp\Bundle\EasyAdminBundle\Filter\EntityFilter;
 
 /**
  * Port of apps.employees.admin.EmployeeAdmin. Creation is deliberately
@@ -33,6 +37,13 @@ use EasyCorp\Bundle\EasyAdminBundle\Field\TextField;
  * to show everyone). No override needed: this port's
  * EmployeeRepository only applies its `isActive` filter in specific
  * named finder methods, never as a blanket default.
+ *
+ * Index columns are deliberately trimmed to what an HR admin scans a
+ * list for (photo, number, name, title, department, manager,
+ * classification, active) — id/timestamps push to the detail page only
+ * via onlyOnDetail(), and department/manager render as real names
+ * (Department/Employee now implement __toString()) instead of the
+ * "EntityName #<uuid>" EasyAdmin falls back to otherwise.
  */
 class EmployeeCrudController extends AbstractCrudController
 {
@@ -52,7 +63,13 @@ class EmployeeCrudController extends AbstractCrudController
             // match — matching Django's own documented limitation
             // (AdminUserListCreateView.get()'s docblock: "Employee.name
             // and User.full_name... cannot be filtered at the SQL level").
-            ->setSearchFields(['employeeNumber', 'jobTitle']);
+            ->setSearchFields(['employeeNumber', 'jobTitle'])
+            // Having no photo and no manager (e.g. the Chief Executive,
+            // or any employee HR hasn't uploaded a picture for yet) is
+            // routine, not an error — an "Null" badge on every other row
+            // reads as broken data. A blank cell communicates the same
+            // thing without the alarm.
+            ->hideNullValues();
     }
 
     public function configureActions(Actions $actions): Actions
@@ -60,37 +77,58 @@ class EmployeeCrudController extends AbstractCrudController
         return $actions->disable(Action::NEW, Action::DELETE);
     }
 
+    public function configureFilters(Filters $filters): Filters
+    {
+        return $filters
+            ->add(EntityFilter::new('department'))
+            ->add(ChoiceFilter::new('classification')->setChoices([
+                'Managerial' => EmployeeClassification::MANAGERIAL,
+                'Non-managerial' => EmployeeClassification::NON_MANAGERIAL,
+            ]))
+            ->add(BooleanFilter::new('isActive'));
+    }
+
     public function configureFields(string $pageName): iterable
     {
         return [
-            IdField::new('id')->hideOnForm(),
+            // Pushed to the detail page only: a UUID prefix isn't useful
+            // for scanning a list of employees, but still worth having
+            // one click away.
+            IdField::new('id')->onlyOnDetail(),
+            // HR change request #2: employee profile picture. Now shown
+            // on the index too (as a small circular thumbnail — see
+            // admin-theme.css) so a row is recognisable at a glance,
+            // same as the SPA's employee list/header.
+            ImageField::new('photoFilename')
+                ->setLabel('Photo')
+                ->setUploadDir('public/uploads/employee-photos')
+                ->setBasePath('uploads/employee-photos'),
             TextField::new('employeeNumber')->setLabel('Employee number'),
             // Not sortable: the column is encrypted at rest, so sorting
             // by it at the SQL level would order by ciphertext bytes.
             TextField::new('name')->setSortable(false),
             TextField::new('jobTitle')->setLabel('Job title'),
-            // choice_label is required for the edit form's <select>:
-            // neither Department nor Employee implements __toString(),
-            // which Symfony's underlying EntityType needs for a plain
-            // property-path-free label.
             AssociationField::new('department')->setFormTypeOption('choice_label', 'name'),
-            AssociationField::new('manager')->hideOnIndex()->setFormTypeOption('choice_label', 'name'),
+            // Now shown on the index too — "who does this person report
+            // to" is exactly the kind of thing an HR admin scans a list
+            // for, and it renders as a real name now (Employee::__toString()).
+            AssociationField::new('manager')->setFormTypeOption('choice_label', 'name'),
             // HR change request #3 ("Matrix Structure / 2 Reporting
             // Lines"): an optional second appraiser. An appraisal isn't
             // finalized until both this employee's manager AND their
             // matrix appraiser (when set) have signed off — see
-            // SignAppraisalService.
+            // SignAppraisalService. Kept off the index: less commonly
+            // needed at a glance than the primary manager.
             AssociationField::new('matrixAppraiser')->hideOnIndex()->setLabel('Matrix Appraiser')->setFormTypeOption('choice_label', 'name'),
-            // HR change request #2: employee profile picture.
-            ImageField::new('photoFilename')
-                ->setLabel('Profile Picture')
-                ->setUploadDir('public/uploads/employee-photos')
-                ->setBasePath('uploads/employee-photos')
-                ->hideOnIndex(),
-            ChoiceField::new('classification')->setChoices([
-                'Managerial' => EmployeeClassification::MANAGERIAL,
-                'Non-managerial' => EmployeeClassification::NON_MANAGERIAL,
-            ]),
+            ChoiceField::new('classification')
+                ->setChoices([
+                    'Managerial' => EmployeeClassification::MANAGERIAL,
+                    'Non-managerial' => EmployeeClassification::NON_MANAGERIAL,
+                ])
+                ->renderAsBadges([
+                    EmployeeClassification::MANAGERIAL->value => 'primary',
+                    EmployeeClassification::NON_MANAGERIAL->value => 'secondary',
+                ]),
             TextField::new('jobFamily')->setLabel('Job family')->hideOnIndex(),
             TextField::new('location')->hideOnIndex(),
             BooleanField::new('isActive')->setLabel('Active'),
@@ -98,8 +136,8 @@ class EmployeeCrudController extends AbstractCrudController
             // record isn't a meaningful ops fix (unlike department/manager,
             // which genuinely can be wrong and need correcting).
             AssociationField::new('user')->hideOnIndex()->setFormTypeOption('choice_label', 'email')->setDisabled(),
-            DateTimeField::new('createdAt')->hideOnForm(),
-            DateTimeField::new('updatedAt')->hideOnForm(),
+            DateTimeField::new('createdAt')->onlyOnDetail(),
+            DateTimeField::new('updatedAt')->onlyOnDetail(),
         ];
     }
 }

@@ -256,4 +256,16 @@ class Employee
     {
         return $this->updatedAt;
     }
+
+    /**
+     * Lets EasyAdmin's AssociationField (manager, matrixAppraiser) render
+     * a readable label instead of falling back to "Employee #<uuid>".
+     * Safe to include the encrypted `name` field here: by the time this
+     * runs, Doctrine has already transparently decrypted it for the
+     * in-memory entity, same as any other getter.
+     */
+    public function __toString(): string
+    {
+        return sprintf('%s (%s)', $this->name, $this->employeeNumber);
+    }
 }

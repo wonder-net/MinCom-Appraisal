@@ -3,6 +3,7 @@
 namespace App\Controller\Admin;
 
 use EasyCorp\Bundle\EasyAdminBundle\Attribute\AdminDashboard;
+use EasyCorp\Bundle\EasyAdminBundle\Config\Assets;
 use EasyCorp\Bundle\EasyAdminBundle\Config\Dashboard;
 use EasyCorp\Bundle\EasyAdminBundle\Config\MenuItem;
 use EasyCorp\Bundle\EasyAdminBundle\Controller\AbstractDashboardController;
@@ -25,7 +26,19 @@ class DashboardController extends AbstractDashboardController
     public function configureDashboard(): Dashboard
     {
         return Dashboard::new()
-            ->setTitle('MINCOM Appraisal — Admin');
+            // Raw HTML: rendered via `|raw` in EasyAdmin's own layout
+            // template, same pattern the framework's own docs use for a
+            // wordmark-style title. Mirrors the admin login page's
+            // navy/light-blue treatment (templates/admin/login.html.twig)
+            // rather than pulling in a logo <img> — avoids re-hitting the
+            // off-root `/MinCom-Appraisal/` base-path issue that's bitten
+            // hardcoded asset paths elsewhere in this app.
+            ->setTitle('<strong style="letter-spacing:.5px;">MINCOM</strong> <span style="opacity:.65;font-weight:400;">Appraisal Admin</span>');
+    }
+
+    public function configureAssets(): Assets
+    {
+        return Assets::new()->addCssFile('css/admin-theme.css');
     }
 
     public function configureMenuItems(): iterable

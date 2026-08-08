@@ -1,0 +1,40 @@
+/**
+ * Admin panel (/admin) branding — retints EasyAdmin's default indigo
+ * theme to MINCOM's actual brand palette (frontend/tailwind.config.ts:
+ * primary #1B4F72 / primary-dark #154360 / primary-light #D6EAF8,
+ * secondary #2E86C1) so the ops panel doesn't look like an unrelated,
+ * generic scaffold next to the branded SPA. Overrides EasyAdmin's own
+ * design tokens (vendor/easycorp/easyadmin-bundle/assets/css/
+ * easyadmin-theme/variables-theme.css) rather than fighting its markup
+ * with !important — every component (buttons, pagination, sorted-column
+ * markers, badges, sidebar) reads from these same custom properties.
+ */
+:root {
+    --color-primary: #1b4f72;
+
+    --sidebar-bg: #154360;
+    --sidebar-border-color: #123a54;
+    --sidebar-logo-color: #ffffff;
+    --sidebar-menu-color: #d6eaf8;
+    --sidebar-menu-header-color: #7fb3d5;
+    --sidebar-menu-icon-color: #a9cce3;
+    --sidebar-menu-submenu-color: #aed6f1;
+    --sidebar-menu-active-item-bg: #1b4f72;
+    --sidebar-menu-active-item-color: #ffffff;
+
+    --button-primary-bg: linear-gradient(to bottom, #2e86c1, #1b4f72);
+    --button-primary-hover-bg: linear-gradient(to bottom, #1b4f72, #154360);
+
+    --pagination-active-bg: #1b4f72;
+    --table-thead-sorted-marker-color: #1b4f72;
+}
+
+/* Employee list: circular avatar thumbnail instead of a raw rectangular
+   upload preview — makes each row recognisable at a glance, matching
+   the SPA's own header/profile avatar treatment. */
+.datagrid .ea-lightbox-thumbnail img {
+    inline-size: 40px;
+    block-size: 40px;
+    border-radius: 50%;
+    object-fit: cover;
+}
