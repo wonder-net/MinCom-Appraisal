@@ -11,6 +11,7 @@ use App\Entity\KeyDeliverable;
 use App\Entity\ScoreDescriptor;
 use App\Entity\Signature;
 use App\Entity\StrengthWeakness;
+use App\Entity\SubCompetency;
 use App\Entity\TrainingNeed;
 use App\Enum\StrengthWeaknessType;
 use App\Repository\CareerPlanRepository;
@@ -22,6 +23,7 @@ use App\Repository\KeyDeliverableRepository;
 use App\Repository\ScoreDescriptorRepository;
 use App\Repository\SignatureRepository;
 use App\Repository\StrengthWeaknessRepository;
+use App\Repository\SubCompetencyRepository;
 use App\Repository\TrainingNeedRepository;
 
 /**
@@ -45,6 +47,7 @@ final class AppraisalPdfContextBuilder
         private readonly SignatureRepository $signatures,
         private readonly EmployeeRepository $employees,
         private readonly ScoreDescriptorRepository $scoreDescriptors,
+        private readonly SubCompetencyRepository $subCompetencies,
         private readonly PdfLogo $logo,
         private readonly EmployeePhotoLoader $employeePhoto,
         private readonly ReportCalculations $calculations,
@@ -86,11 +89,16 @@ final class AppraisalPdfContextBuilder
                 'weighted_score' => $kd->getWeightedScore() !== null ? $this->calculations->roundHalfEven($kd->getWeightedScore(), 2) : null,
             ], $this->keyDeliverables->findByAppraisalOrderedBySortOrder($appraisal)),
             // HR change request #7/#8: "Mincom Core Values Ratings" —
-            // sub_competencies are descriptive only (see Competency's
-            // docblock), shown as sub-bullets under each core value.
+            // sub-competency names are shown as sub-bullets under each
+            // core value (their individual ratings aren't broken out
+            // here yet — this PDF report predates sub-competencies
+            // becoming separately ratable; see SubCompetency's docblock).
             'competency_ratings' => array_map(fn (CompetencyRating $cr) => [
                 'competency_name' => $cr->getCompetency()->getName(),
-                'sub_competencies' => $cr->getCompetency()->getSubCompetencies(),
+                'sub_competencies' => array_map(
+                    static fn (SubCompetency $sc) => $sc->getName(),
+                    $this->subCompetencies->findByCompetencyOrdered($cr->getCompetency()),
+                ),
                 'self_rating' => $cr->getSelfRating(),
                 'manager_rating' => $cr->getManagerRating(),
             ], $this->competencyRatings->findByAppraisalOrdered($appraisal)),

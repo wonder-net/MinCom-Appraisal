@@ -6,14 +6,18 @@ namespace App\Service;
 
 use App\Entity\Appraisal;
 use App\Entity\AppraisalCycle;
+use App\Entity\Competency;
 use App\Entity\CompetencyRating;
 use App\Entity\Employee;
+use App\Entity\SubCompetency;
+use App\Entity\SubCompetencyRating;
 use App\Enum\AppraisalFormType;
 use App\Enum\AppraisalStatus;
 use App\Enum\CompetencyApplicableTo;
 use App\Enum\EmployeeClassification;
 use App\Repository\CompetencyRepository;
 use App\Repository\EmployeeRepository;
+use App\Repository\SubCompetencyRepository;
 use Doctrine\ORM\EntityManagerInterface;
 
 /**
@@ -27,6 +31,8 @@ final class AppraisalInstanceBuilder
     public function __construct(
         private readonly EmployeeRepository $employees,
         private readonly CompetencyRepository $competencies,
+        private readonly SubCompetencyRepository $subCompetencies,
+        private readonly SubCompetencyWeightCalculator $weightCalculator,
         private readonly EntityManagerInterface $em,
     ) {
     }
@@ -46,8 +52,21 @@ final class AppraisalInstanceBuilder
         // competencies for the audit snapshot. Soft-deactivated
         // competencies must not seed new rating rows (TASK-286).
         $competenciesByApplicable = [];
-        foreach ($this->competencies->findAllOrderedBySortOrder(includeInactive: false) as $competency) {
+        $allCompetencies = $this->competencies->findAllOrderedBySortOrder(includeInactive: false);
+        foreach ($allCompetencies as $competency) {
             $competenciesByApplicable[$competency->getApplicableTo()->value][] = $competency;
+        }
+
+        // Pre-fetch active sub-competencies once (same active-only,
+        // loop-invariant fetch pattern as $competenciesByApplicable
+        // above), keyed by parent competency id, so each employee's
+        // CompetencyRating creation below doesn't re-query per row.
+        $subCompetenciesByCompetencyId = [];
+        foreach ($allCompetencies as $competency) {
+            $subs = $this->subCompetencies->findByCompetencyOrdered($competency);
+            if ($subs !== []) {
+                $subCompetenciesByCompetencyId[(string) $competency->getId()] = $subs;
+            }
         }
 
         $initialStatus = $cycle->isSelfRatingEnabled() ? AppraisalStatus::SELF_ASSESSMENT : AppraisalStatus::MANAGER_REVIEW;
@@ -66,6 +85,8 @@ final class AppraisalInstanceBuilder
                     $rating = new CompetencyRating($appraisal, $competency);
                     $this->em->persist($rating);
                     $ratings[] = $rating;
+
+                    $this->seedSubCompetencyRatings($rating, $competency, $subCompetenciesByCompetencyId);
                 }
             }
         }
@@ -73,6 +94,22 @@ final class AppraisalInstanceBuilder
         $this->em->flush();
 
         return ['appraisals' => $appraisals, 'ratings' => $ratings];
+    }
+
+    /**
+     * @param array<string, list<SubCompetency>> $subCompetenciesByCompetencyId
+     */
+    private function seedSubCompetencyRatings(CompetencyRating $rating, Competency $competency, array $subCompetenciesByCompetencyId): void
+    {
+        $subCompetencies = $subCompetenciesByCompetencyId[(string) $competency->getId()] ?? [];
+        if ($subCompetencies === []) {
+            return;
+        }
+
+        $shares = $this->weightCalculator->computeShares(count($subCompetencies));
+        foreach ($subCompetencies as $index => $subCompetency) {
+            $this->em->persist(new SubCompetencyRating($rating, $subCompetency, $subCompetency->getName(), $subCompetency->getSortOrder(), $shares[$index]));
+        }
     }
 
     private function deriveFormType(Employee $employee): AppraisalFormType

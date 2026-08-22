@@ -54,6 +54,7 @@ class DashboardController extends AbstractDashboardController
         yield MenuItem::section('Appraisal configuration');
         yield MenuItem::linkTo(AppraisalCycleCrudController::class, 'Appraisal Cycles', 'fa fa-calendar-days');
         yield MenuItem::linkTo(CompetencyCrudController::class, 'Competencies', 'fa fa-list-check');
+        yield MenuItem::linkTo(SubCompetencyCrudController::class, 'Sub-competencies', 'fa fa-list-ul');
         yield MenuItem::linkTo(BscPerspectiveCrudController::class, 'BSC Perspectives', 'fa fa-chart-pie');
         yield MenuItem::linkTo(ScoreDescriptorCrudController::class, 'Score Descriptors', 'fa fa-ranking-star');
         yield MenuItem::linkTo(CalibrationSessionCrudController::class, 'Calibration Sessions', 'fa fa-scale-balanced');

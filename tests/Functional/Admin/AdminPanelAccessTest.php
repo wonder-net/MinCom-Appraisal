@@ -184,4 +184,36 @@ final class AdminPanelAccessTest extends WebTestCase
         $refreshed = $em->getRepository(Competency::class)->find($competency->getId());
         self::assertSame(42, $refreshed->getSortOrder());
     }
+
+    /**
+     * Unlike every other CrudController tested above, SubCompetency
+     * genuinely supports New/Edit (it's an HR-managed list — see
+     * SubCompetencyCrudController's docblock) but disables Delete: a
+     * hard-deleted sub-competency would cascade away SubCompetencyRating
+     * rows on live appraisals, breaking the "shares sum to 7.5"
+     * invariant for whichever appraisals were mid-cycle.
+     */
+    public function testSubCompetencyNewActionIsEnabled(): void
+    {
+        $client = static::createClient();
+        $admin = UserFactory::new()->admin()->create();
+        \App\Factory\CompetencyFactory::new()->create();
+        $client->loginUser($admin, 'admin');
+
+        $client->request('GET', '/admin/sub-competency/new');
+
+        self::assertResponseIsSuccessful();
+    }
+
+    public function testSubCompetencyDeleteActionIsDisabled(): void
+    {
+        $client = static::createClient();
+        $admin = UserFactory::new()->admin()->create();
+        $subCompetency = \App\Factory\SubCompetencyFactory::new()->create();
+        $client->loginUser($admin, 'admin');
+
+        $client->request('POST', '/admin/sub-competency/'.$subCompetency->getId().'/delete');
+
+        self::assertResponseStatusCodeSame(403);
+    }
 }

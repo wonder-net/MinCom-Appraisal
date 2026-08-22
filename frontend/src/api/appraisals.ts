@@ -18,6 +18,8 @@ import type {
   CreateKeyDeliverableRequest,
   UpdateKeyDeliverableRequest,
   UpdateCompetencyRatingRequest,
+  SubCompetencyRating,
+  UpdateSubCompetencyRatingRequest,
   AppraisalCycle,
   CreateCyclePayload,
   UpdateCyclePayload,
@@ -135,6 +137,46 @@ export async function updateCompetencyRating(
 }
 
 /**
+ * Update one sub-competency's rating. Used instead of
+ * updateCompetencyRating() whenever the core value has sub-competencies
+ * (CompetencyRating.sub_competency_ratings is non-empty) — the parent
+ * rating is then a read-only roll-up the server computes.
+ * PATCH /api/v1/appraisals/:id/competencies/:crId/sub-competencies/:subCrId/
+ */
+export async function updateSubCompetencyRating(
+  appraisalId: string,
+  crId: string,
+  subCrId: string,
+  body: UpdateSubCompetencyRatingRequest,
+): Promise<SubCompetencyRating> {
+  const response = await apiClient.patch<SubCompetencyRating>(
+    `appraisals/${appraisalId}/competencies/${crId}/sub-competencies/${subCrId}/`,
+    body,
+  );
+  return response.data;
+}
+
+/**
+ * Appraisee-only: add a sub-competency of their own under a core value
+ * on their own appraisal (SELF_ASSESSMENT only) — per-appraisal only,
+ * never written to HR's master sub-competency list. Reshares every
+ * sibling's max_score and clears existing sub-ratings on that core
+ * value, so the response is the full updated CompetencyRating.
+ * POST /api/v1/appraisals/:id/competencies/:crId/sub-competencies/
+ */
+export async function addSubCompetency(
+  appraisalId: string,
+  crId: string,
+  name: string,
+): Promise<CompetencyRating> {
+  const response = await apiClient.post<CompetencyRating>(
+    `appraisals/${appraisalId}/competencies/${crId}/sub-competencies/`,
+    { name },
+  );
+  return response.data;
+}
+
+/**
  * Trigger a workflow transition on an appraisal.
  * POST /api/v1/appraisals/:id/transition/
  */
@@ -211,6 +253,19 @@ export async function closeCycle(
 ): Promise<AppraisalCycle> {
   const response = await apiClient.post<AppraisalCycle>(
     `appraisals/cycles/${id}/close/`,
+  );
+  return response.data;
+}
+
+/**
+ * Archive a CLOSED cycle, marking it as HR's permanent historical record.
+ * POST /api/v1/appraisals/cycles/{id}/archive/
+ */
+export async function archiveCycle(
+  id: string,
+): Promise<AppraisalCycle> {
+  const response = await apiClient.post<AppraisalCycle>(
+    `appraisals/cycles/${id}/archive/`,
   );
   return response.data;
 }

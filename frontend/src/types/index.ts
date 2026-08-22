@@ -105,7 +105,7 @@ export type BscPerspective =
 /**
  * Appraisal cycle status discriminator.
  */
-export type CycleStatus = "DRAFT" | "ACTIVE" | "CLOSED";
+export type CycleStatus = "DRAFT" | "ACTIVE" | "CLOSED" | "ARCHIVED";
 
 /**
  * Appraisal cycle returned by list/detail endpoints.
@@ -214,6 +214,29 @@ export interface KeyDeliverable {
 }
 
 /**
+ * One sub-competency's rating under a core value (see SubCompetency's
+ * backend docblock). `max_score` is that sub-item's frozen equal share
+ * of the parent core value's fixed 7.5-point ceiling — not always a
+ * "nice" number, so it's shown/validated as given, not assumed to be a
+ * round step.
+ */
+export interface SubCompetencyRating {
+  id: string;
+  competency_rating: string;
+  /** Null for an appraisee-added, per-appraisal-only item (is_custom). */
+  sub_competency: string | null;
+  /** True when the appraisee added this item themselves — never touches HR's master list. */
+  is_custom: boolean;
+  name: string;
+  sort_order: number;
+  max_score: number;
+  self_rating: number | null;
+  manager_rating: number | null;
+  created_at: string;
+  updated_at: string;
+}
+
+/**
  * Competency Rating nested in the appraisal detail response.
  */
 export interface CompetencyRating {
@@ -225,11 +248,12 @@ export interface CompetencyRating {
   competency_is_core: boolean;
   competency_sort_order: number;
   /**
-   * Descriptive sub-competencies shown under this core value's name —
-   * informational only, not separately rated (the rating applies to the
-   * whole core value).
+   * Non-empty exactly when this core value is rated per sub-competency
+   * rather than directly — self_rating/manager_rating below are then a
+   * read-only roll-up (sum) of these, only populated once every
+   * sub-item on that side has been rated.
    */
-  sub_competencies?: string[] | null;
+  sub_competency_ratings?: SubCompetencyRating[];
   self_rating: number | null;
   manager_rating: number | null;
   created_at: string;
@@ -291,6 +315,14 @@ export interface UpdateKeyDeliverableRequest {
  * Body for updating a competency rating.
  */
 export interface UpdateCompetencyRatingRequest {
+  self_rating?: number | null;
+  manager_rating?: number | null;
+}
+
+/**
+ * Body for updating a single sub-competency's rating.
+ */
+export interface UpdateSubCompetencyRatingRequest {
   self_rating?: number | null;
   manager_rating?: number | null;
 }

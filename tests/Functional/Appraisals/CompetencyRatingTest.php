@@ -135,6 +135,26 @@ final class CompetencyRatingTest extends WebTestCase
         self::assertResponseStatusCodeSame(400);
     }
 
+    public function testDirectPatchRejectedWhenSubCompetenciesExist(): void
+    {
+        $client = static::createClient();
+        $appraisal = $this->makeAppraisal($client, AppraisalStatus::MANAGER_REVIEW);
+        $competency = \App\Factory\CompetencyFactory::new()->create();
+        $rating = new CompetencyRating($appraisal, $competency);
+        $em = static::getContainer()->get(EntityManagerInterface::class);
+        $em->persist($rating);
+        $subCompetency = \App\Factory\SubCompetencyFactory::new()->create(['competency' => $competency]);
+        $em->persist(new \App\Entity\SubCompetencyRating($rating, $subCompetency, $subCompetency->getName(), 0, '7.50'));
+        $em->flush();
+        [$client, $accessToken] = $this->loginAsManagerOf($client, $appraisal);
+
+        $client->request('PATCH', '/api/v1/appraisals/'.$appraisal->getId().'/competencies/'.$rating->getId().'/', server: $this->authHeader($accessToken), content: json_encode([
+            'manager_rating' => '4.0',
+        ]));
+
+        self::assertResponseStatusCodeSame(400);
+    }
+
     public function testFullScoringFlowComputesTotalsAndDescriptors(): void
     {
         $client = static::createClient();

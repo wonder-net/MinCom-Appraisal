@@ -8,6 +8,7 @@ use App\Entity\User;
 use App\Enum\AppraisalStatus;
 use App\Repository\AppraisalRepository;
 use App\Repository\CompetencyRatingRepository;
+use App\Repository\SubCompetencyRatingRepository;
 use App\Service\AppraisalAccessChecker;
 use App\Service\CompetencyRatingResponseBuilder;
 use App\Service\ScoreEngine;
@@ -26,12 +27,20 @@ use Symfony\Component\Security\Http\Attribute\CurrentUser;
  * request #3) sets manager_rating during MANAGER_REVIEW, DISCUSSION, or
  * DISPUTED. Ratings are 1.0-7.5 in 0.5 increments (HR change request
  * #8) — see validateRatingRange().
+ *
+ * Rejects the PATCH entirely (400) when this core value has
+ * sub-competencies (SubCompetency) — a competency with sub-items must
+ * be rated per sub-item via SubCompetencyRatingUpdateController, which
+ * rolls the sum back up onto this same self_rating/manager_rating
+ * field itself; a direct write here would silently overwrite that
+ * roll-up and let the "shares sum to 7.5" invariant drift.
  */
 final class CompetencyRatingUpdateController
 {
     public function __construct(
         private readonly AppraisalRepository $appraisals,
         private readonly CompetencyRatingRepository $competencyRatings,
+        private readonly SubCompetencyRatingRepository $subCompetencyRatings,
         private readonly AppraisalAccessChecker $access,
         private readonly CompetencyRatingResponseBuilder $responseBuilder,
         private readonly ScoreEngine $scoreEngine,
@@ -50,6 +59,10 @@ final class CompetencyRatingUpdateController
         $rating = $this->competencyRatings->findOneByAppraisalAndId($appraisal, $id);
         if ($rating === null) {
             throw new NotFoundHttpException();
+        }
+
+        if ($this->subCompetencyRatings->findByCompetencyRatingOrdered($rating) !== []) {
+            return new JsonResponse(['detail' => 'This core value is rated per sub-competency; PATCH the individual sub-competency ratings instead.'], 400);
         }
 
         $payload = json_decode($request->getContent(), true) ?? [];

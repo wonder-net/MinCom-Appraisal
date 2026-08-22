@@ -32,6 +32,8 @@ import {
   updateDeliverable,
   deleteDeliverable,
   updateCompetencyRating,
+  updateSubCompetencyRating,
+  addSubCompetency,
   downloadAppraisalPDF,
 } from "@/api/appraisals";
 import { submitSignature } from "@/api/signatures";
@@ -329,6 +331,35 @@ export function AppraisalDetailPage() {
     [id, refetch, toastError],
   );
 
+  const handleUpdateSubCr = useCallback(
+    (crId: string, subCrId: string, field: RatingField, value: number): Promise<void> => {
+      if (!id) return Promise.resolve();
+      return updateSubCompetencyRating(id, crId, subCrId, { [field]: value })
+        .then(() => {
+          void refetch();
+        })
+        .catch((err: unknown) => {
+          toastError(buildErrorMessage(err));
+          void refetch();
+        });
+    },
+    [id, refetch, toastError],
+  );
+
+  const handleAddSubCr = useCallback(
+    (crId: string, name: string): Promise<void> => {
+      if (!id) return Promise.resolve();
+      return addSubCompetency(id, crId, name).then(() => {
+        void refetch();
+      });
+      // Deliberately not caught here — CompetenciesTab's add form shows
+      // the validation error (duplicate/empty name) inline itself and
+      // needs the rejection to reach it, unlike the rating handlers
+      // above which only ever toast a generic failure.
+    },
+    [id, refetch],
+  );
+
   if (isLoading) return <DetailSkeleton />;
 
   if (error) {
@@ -428,6 +459,8 @@ export function AppraisalDetailPage() {
               bcAverage={appraisal.bc_average_score}
               bcDescriptor={appraisal.bc_descriptor}
               onUpdateRating={handleUpdateCr}
+              onUpdateSubRating={handleUpdateSubCr}
+              onAddSubCompetency={handleAddSubCr}
             />
           </div>
         )}

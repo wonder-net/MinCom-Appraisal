@@ -14,7 +14,6 @@ use EasyCorp\Bundle\EasyAdminBundle\Field\BooleanField;
 use EasyCorp\Bundle\EasyAdminBundle\Field\ChoiceField;
 use EasyCorp\Bundle\EasyAdminBundle\Field\IdField;
 use EasyCorp\Bundle\EasyAdminBundle\Field\IntegerField;
-use EasyCorp\Bundle\EasyAdminBundle\Field\TextareaField;
 use EasyCorp\Bundle\EasyAdminBundle\Field\TextField;
 
 /**
@@ -25,6 +24,11 @@ use EasyCorp\Bundle\EasyAdminBundle\Field\TextField;
  * fixing operational fields (sort order, active/core flags) on existing
  * rows. `name` has no setter on the entity (immutable after creation,
  * see Competency's docblock), so it's shown read-only.
+ *
+ * Sub-competencies (the ratable items under a core value) are managed
+ * separately at SubCompetencyCrudController, not here — they used to be
+ * a plain newline-delimited textarea field on this entity, before
+ * becoming their own real, ratable rows (see SubCompetency's docblock).
  */
 class CompetencyCrudController extends AbstractCrudController
 {
@@ -62,12 +66,6 @@ class CompetencyCrudController extends AbstractCrudController
             BooleanField::new('isCore')->setLabel('Core'),
             BooleanField::new('isActive')->setLabel('Active'),
             IntegerField::new('sortOrder')->setLabel('Sort order'),
-            // HR change request #8.2: descriptive sub-competencies shown
-            // under this core value on the appraisal report — one per
-            // line, informational only (not separately rated).
-            TextareaField::new('subCompetenciesText')
-                ->setLabel('Sub-competencies (one per line)')
-                ->hideOnIndex(),
         ];
     }
 }
