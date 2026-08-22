@@ -209,6 +209,28 @@ final class AppraisalCycleTest extends WebTestCase
         self::assertResponseStatusCodeSame(400);
     }
 
+    public function testArchiveClosedCycleSucceeds(): void
+    {
+        $client = self::freshClient();
+        $cycle = AppraisalCycleFactory::new()->closed()->create();
+        [$client, $accessToken] = $this->loginAs(RoleName::HR_ADMIN, $client);
+
+        $client->request('POST', self::LIST_URL.$cycle->getId().'/archive/', server: $this->authHeader($accessToken));
+        self::assertResponseIsSuccessful();
+        self::assertSame('ARCHIVED', json_decode($client->getResponse()->getContent(), true)['data']['status']);
+    }
+
+    public function testArchiveNonClosedCycleReturns400(): void
+    {
+        $client = self::freshClient();
+        $cycle = AppraisalCycleFactory::new()->active()->create();
+        [$client, $accessToken] = $this->loginAs(RoleName::HR_ADMIN, $client);
+
+        $client->request('POST', self::LIST_URL.$cycle->getId().'/archive/', server: $this->authHeader($accessToken));
+        self::assertResponseStatusCodeSame(400);
+        self::assertSame('Only CLOSED cycles can be archived.', json_decode($client->getResponse()->getContent(), true)['data']['detail']);
+    }
+
     public function testFinaliseAllFinalisesOnlySignedOffAppraisals(): void
     {
         $client = self::freshClient();

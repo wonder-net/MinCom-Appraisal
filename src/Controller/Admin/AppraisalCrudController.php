@@ -7,6 +7,8 @@ namespace App\Controller\Admin;
 use App\Entity\Appraisal;
 use App\Enum\AppraisalFormType;
 use App\Enum\AppraisalStatus;
+use App\Exception\ConflictException;
+use Doctrine\ORM\EntityManagerInterface;
 use EasyCorp\Bundle\EasyAdminBundle\Config\Action;
 use EasyCorp\Bundle\EasyAdminBundle\Config\Actions;
 use EasyCorp\Bundle\EasyAdminBundle\Config\Crud;
@@ -38,6 +40,15 @@ use EasyCorp\Bundle\EasyAdminBundle\Field\TextField;
  * as a break-glass ops tool for fixing a genuinely stuck record, not a
  * routine editing surface — the real transition/rating endpoints keep
  * the guarantees this panel doesn't.
+ *
+ * Delete is disabled once an appraisal reaches FINALISED: that's HR's
+ * permanent archive record (see EmployeeAppraisalHistoryController /
+ * EmployeeAppraisalHistoryBuilder), so a finalised row must outlive any
+ * single admin's click. The button is hidden via displayIf() below, but
+ * that's UI-only — EasyAdmin's own action-permission check doesn't
+ * consult displayIf(), so deleteEntity() is overridden too as the actual
+ * enforcement (a direct POST to the delete route would otherwise bypass
+ * the hidden button).
  */
 class AppraisalCrudController extends AbstractCrudController
 {
@@ -56,7 +67,22 @@ class AppraisalCrudController extends AbstractCrudController
 
     public function configureActions(Actions $actions): Actions
     {
-        return $actions->disable(Action::NEW);
+        $hideOnFinalised = static fn (Appraisal $appraisal): bool => $appraisal->getStatus() !== AppraisalStatus::FINALISED;
+
+        return $actions
+            ->disable(Action::NEW)
+            ->update(Crud::PAGE_INDEX, Action::DELETE, static fn (Action $action) => $action->displayIf($hideOnFinalised))
+            ->update(Crud::PAGE_DETAIL, Action::DELETE, static fn (Action $action) => $action->displayIf($hideOnFinalised));
+    }
+
+    public function deleteEntity(EntityManagerInterface $entityManager, object $entityInstance): void
+    {
+        \assert($entityInstance instanceof Appraisal);
+        if ($entityInstance->getStatus() === AppraisalStatus::FINALISED) {
+            throw new ConflictException('Finalised appraisals are part of the permanent appraisal record and cannot be deleted.');
+        }
+
+        parent::deleteEntity($entityManager, $entityInstance);
     }
 
     public function configureFields(string $pageName): iterable

@@ -7,6 +7,10 @@ namespace App\Controller\Admin;
 use App\Entity\AppraisalCycle;
 use App\Entity\User;
 use App\Enum\AppraisalCycleStatus;
+use App\Exception\ConflictException;
+use Doctrine\ORM\EntityManagerInterface;
+use EasyCorp\Bundle\EasyAdminBundle\Config\Action;
+use EasyCorp\Bundle\EasyAdminBundle\Config\Actions;
 use EasyCorp\Bundle\EasyAdminBundle\Config\Crud;
 use EasyCorp\Bundle\EasyAdminBundle\Controller\AbstractCrudController;
 use EasyCorp\Bundle\EasyAdminBundle\Field\ArrayField;
@@ -32,9 +36,20 @@ use EasyCorp\Bundle\EasyAdminBundle\Field\TextField;
  * activation (POST .../activate/), not typed by hand — shown read-only
  * so an admin can still see what was frozen without being able to
  * quietly rewrite appraisal history.
+ *
+ * Delete is disabled once a cycle reaches CLOSED or ARCHIVED: those are
+ * terminal, historical states (see AppraisalCycleCloseController /
+ * AppraisalCycleArchiveController) and every appraisal underneath a
+ * cycle cascades on the cycle's deletion, so removing a closed/archived
+ * cycle would silently wipe HR's entire historical record for that
+ * period. The button is hidden via displayIf() below, but that's UI
+ * only — deleteEntity() is overridden too as the real enforcement,
+ * since EasyAdmin's action-permission check doesn't consult displayIf().
  */
 class AppraisalCycleCrudController extends AbstractCrudController
 {
+    private const UNDELETABLE_STATUSES = [AppraisalCycleStatus::CLOSED, AppraisalCycleStatus::ARCHIVED];
+
     public static function getEntityFqcn(): string
     {
         return AppraisalCycle::class;
@@ -56,6 +71,25 @@ class AppraisalCycleCrudController extends AbstractCrudController
             ->setEntityLabelInPlural('Appraisal Cycles')
             ->setDefaultSort(['startDate' => 'DESC'])
             ->setSearchFields(['periodName']);
+    }
+
+    public function configureActions(Actions $actions): Actions
+    {
+        $hideOnTerminal = static fn (AppraisalCycle $cycle): bool => !\in_array($cycle->getStatus(), self::UNDELETABLE_STATUSES, true);
+
+        return $actions
+            ->update(Crud::PAGE_INDEX, Action::DELETE, static fn (Action $action) => $action->displayIf($hideOnTerminal))
+            ->update(Crud::PAGE_DETAIL, Action::DELETE, static fn (Action $action) => $action->displayIf($hideOnTerminal));
+    }
+
+    public function deleteEntity(EntityManagerInterface $entityManager, object $entityInstance): void
+    {
+        \assert($entityInstance instanceof AppraisalCycle);
+        if (\in_array($entityInstance->getStatus(), self::UNDELETABLE_STATUSES, true)) {
+            throw new ConflictException('Closed and archived cycles are HR\'s permanent appraisal record and cannot be deleted.');
+        }
+
+        parent::deleteEntity($entityManager, $entityInstance);
     }
 
     public function configureFields(string $pageName): iterable

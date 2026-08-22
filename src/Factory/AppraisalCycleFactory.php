@@ -42,4 +42,11 @@ final class AppraisalCycleFactory extends PersistentObjectFactory
             $cycle->setStatus(AppraisalCycleStatus::CLOSED);
         });
     }
+
+    public function archived(): static
+    {
+        return $this->afterInstantiate(static function (AppraisalCycle $cycle): void {
+            $cycle->setStatus(AppraisalCycleStatus::ARCHIVED);
+        });
+    }
 }

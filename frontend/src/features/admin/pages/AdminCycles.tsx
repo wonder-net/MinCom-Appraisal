@@ -225,6 +225,21 @@ export function AdminCycles() {
                             </button>
                           </>
                         )}
+                        {cycle.status === "CLOSED" && (
+                          <button
+                            type="button"
+                            className="text-sm text-secondary hover:text-primary font-medium"
+                            onClick={() =>
+                              setConfirmState({
+                                action: "archive",
+                                cycle,
+                              })
+                            }
+                            aria-label={`Archive ${cycle.period_name}`}
+                          >
+                            Archive
+                          </button>
+                        )}
                       </td>
                     </tr>
                   ))}

@@ -1,5 +1,6 @@
 /**
- * CycleConfirmDialog — AlertDialog for Activate / Close lifecycle actions.
+ * CycleConfirmDialog — AlertDialog for Activate / Close / Archive
+ * lifecycle actions.
  *
  * Uses the shadcn AlertDialog pattern with role="alertdialog".
  * Displays appropriate copy and button styling for each action.
@@ -16,11 +17,11 @@ import {
   AlertDialogCancel,
   AlertDialogAction,
 } from "@/components/ui/alert-dialog";
-import { activateCycle, closeCycle, finaliseAllInCycle } from "@/api/appraisals";
+import { activateCycle, archiveCycle, closeCycle, finaliseAllInCycle } from "@/api/appraisals";
 import { extractApiError } from "@/utils/extract-api-error";
 import type { AppraisalCycle } from "@/types";
 
-export type ConfirmAction = "activate" | "close" | "finalise-all";
+export type ConfirmAction = "activate" | "close" | "finalise-all" | "archive";
 
 interface CycleConfirmDialogProps {
   action: ConfirmAction | null;
@@ -52,6 +53,12 @@ const COPY: Record<
       "This will finalise all appraisals in SIGNED OFF status for this cycle. This action cannot be undone. Continue?",
     confirmLabel: "Finalise All",
   },
+  archive: {
+    title: "Archive Cycle",
+    description:
+      "Archiving marks this cycle as part of the permanent appraisal record. Once archived, the cycle and its appraisals can no longer be deleted from the admin panel. Continue?",
+    confirmLabel: "Archive",
+  },
 };
 
 export function CycleConfirmDialog({
@@ -78,6 +85,9 @@ export function CycleConfirmDialog({
       } else if (action === "finalise-all") {
         const result = await finaliseAllInCycle(cycle.id);
         onSuccess(`${result.finalised} appraisal${result.finalised !== 1 ? "s" : ""} finalised.`);
+      } else if (action === "archive") {
+        await archiveCycle(cycle.id);
+        onSuccess("Cycle archived.");
       }
     } catch (err: unknown) {
       onError(extractApiError(err));

@@ -71,6 +71,10 @@ const STATUS_MAP: Record<string, BadgeConfig> = {
     label: "Closed",
     classes: "bg-primary-light text-primary border-secondary",
   },
+  ARCHIVED: {
+    label: "Archived",
+    classes: "bg-slate-100 text-slate-600 border-slate-300",
+  },
   // Generic statuses
   Active: {
     label: "Active",
