@@ -108,6 +108,30 @@ export async function getDirectReports(id: string): Promise<Employee[]> {
 }
 
 /**
+ * Upload (or replace) the current user's own profile picture.
+ * POST /api/v1/employees/me/photo/ (multipart/form-data)
+ */
+export async function uploadMyPhoto(file: File): Promise<Employee> {
+  const formData = new FormData();
+  formData.append("photo", file);
+  const response = await apiClient.post<Employee>(
+    "employees/me/photo/",
+    formData,
+    { headers: { "Content-Type": "multipart/form-data" } },
+  );
+  return response.data;
+}
+
+/**
+ * Remove the current user's own profile picture, if one is set.
+ * DELETE /api/v1/employees/me/photo/
+ */
+export async function deleteMyPhoto(): Promise<Employee> {
+  const response = await apiClient.delete<Employee>("employees/me/photo/");
+  return response.data;
+}
+
+/**
  * Department lookup item from the departments endpoint.
  */
 export interface DepartmentLookup {

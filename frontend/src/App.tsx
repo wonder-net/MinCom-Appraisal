@@ -8,7 +8,7 @@
  * - /appraisals      Protected — AppraisalListPage (main page)
  * - /appraisals/:id  Protected — AppraisalDetailPage
  * - /admin/users     Protected + HR_ADMIN — AdminUsers page
- * - /employees       Protected — EmployeeListPage (all authenticated)
+ * - /employees       Protected — EmployeeListPage (HR/manager-tier — see EMPLOYEE_DIRECTORY_ROLES)
  * - /employees/:id   Protected — EmployeeProfilePage (all authenticated)
  * - /reports         Protected + HR_ADMIN|HR_OFFICER|EXECUTIVE — ReportsLayout
  *   - /reports       (index) ReportsDashboard
@@ -71,6 +71,7 @@ import {
   CalibrationBoardPage,
 } from "@/features/reports";
 import { EmployeeListPage, EmployeeProfilePage } from "@/features/employees";
+import { EMPLOYEE_DIRECTORY_ROLES } from "@/auth/role-helpers";
 import { AuditLogPage } from "@/features/audit";
 import { AccountSettings } from "@/features/settings";
 import {
@@ -194,7 +195,17 @@ export default function App() {
                 </RoleGuard>
               }
             />
-            <Route path="/employees" element={<EmployeeListPage />} />
+            <Route
+              path="/employees"
+              element={
+                <RoleGuard
+                  roles={[...EMPLOYEE_DIRECTORY_ROLES]}
+                  fallback={<Navigate to="/unauthorized" replace />}
+                >
+                  <EmployeeListPage />
+                </RoleGuard>
+              }
+            />
             <Route path="/employees/:id" element={<EmployeeProfilePage />} />
 
             {/* Reports — nested under ReportsLayout */}

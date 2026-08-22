@@ -6,7 +6,7 @@
  */
 
 import { describe, it, expect } from "vitest";
-import { isAdminUser } from "../role-helpers";
+import { isAdminUser, canViewEmployeeDirectory } from "../role-helpers";
 import type { User, UserRole } from "../types";
 
 const buildUser = (roles: UserRole[]): User => ({
@@ -52,5 +52,27 @@ describe("isAdminUser", () => {
 
   it("returns false for an empty roles array", () => {
     expect(isAdminUser(buildUser([]))).toBe(false);
+  });
+});
+
+describe("canViewEmployeeDirectory", () => {
+  it("returns false when the user is null", () => {
+    expect(canViewEmployeeDirectory(null)).toBe(false);
+  });
+
+  it("returns true for HR/manager-tier roles", () => {
+    expect(canViewEmployeeDirectory(buildUser(["HR_ADMIN"]))).toBe(true);
+    expect(canViewEmployeeDirectory(buildUser(["SYSTEM_ADMIN"]))).toBe(true);
+    expect(canViewEmployeeDirectory(buildUser(["HR_OFFICER"]))).toBe(true);
+    expect(canViewEmployeeDirectory(buildUser(["EXECUTIVE"]))).toBe(true);
+    expect(canViewEmployeeDirectory(buildUser(["MANAGER"]))).toBe(true);
+  });
+
+  it("returns false for a plain EMPLOYEE — the list endpoint scopes down to just themselves, not a real directory", () => {
+    expect(canViewEmployeeDirectory(buildUser(["EMPLOYEE"]))).toBe(false);
+  });
+
+  it("returns false for an empty roles array", () => {
+    expect(canViewEmployeeDirectory(buildUser([]))).toBe(false);
   });
 });

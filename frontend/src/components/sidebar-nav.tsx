@@ -22,6 +22,7 @@ import {
   ChevronRight,
 } from "lucide-react";
 import { useAuth } from "@/auth/useAuth";
+import { EMPLOYEE_DIRECTORY_ROLES } from "@/auth/role-helpers";
 import type { UserRole } from "@/auth/types";
 import type { ComponentType } from "react";
 
@@ -80,7 +81,7 @@ const NAV_ENTRIES: readonly NavEntry[] = [
     label: "Employees",
     href: "/employees",
     icon: Users2,
-    allowedRoles: ["HR_ADMIN", "SYSTEM_ADMIN", "HR_OFFICER", "EXECUTIVE", "MANAGER"],
+    allowedRoles: EMPLOYEE_DIRECTORY_ROLES,
   },
   {
     kind: "item",

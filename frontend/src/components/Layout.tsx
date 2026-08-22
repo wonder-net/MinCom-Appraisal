@@ -13,8 +13,55 @@ import { SidebarNav } from "@/components/sidebar-nav";
 import { BookOpen, Menu, X } from "lucide-react";
 import { NotificationBell } from "@/components/NotificationBell";
 import { BreadcrumbProvider, useBreadcrumbs } from "@/context/BreadcrumbContext";
+import { MyPhotoProvider, useMyPhoto } from "@/context/MyPhotoContext";
 import { ROLE_DISPLAY_LABELS } from "@/types";
 import type { AdminRole } from "@/types";
+
+interface SidebarUserFooterProps {
+  href: string | null;
+  photoUrl: string | null;
+  initials: string;
+  name: string;
+  role: string;
+  onClick?: () => void;
+}
+
+function SidebarUserFooter({ href, photoUrl, initials, name, role, onClick }: SidebarUserFooterProps) {
+  const content = (
+    <>
+      {photoUrl ? (
+        <img
+          src={photoUrl}
+          alt=""
+          className="h-8 w-8 rounded-full object-cover border border-white/30 flex-shrink-0"
+        />
+      ) : (
+        <div className="h-8 w-8 rounded-full bg-white/20 flex items-center justify-center text-white text-xs font-semibold flex-shrink-0">
+          {initials}
+        </div>
+      )}
+      <div className="min-w-0">
+        <p className="text-white text-xs font-medium truncate">{name}</p>
+        <p className="text-white/50 text-xs truncate">{role}</p>
+      </div>
+    </>
+  );
+
+  if (href === null) {
+    return <div className="flex items-center gap-3">{content}</div>;
+  }
+
+  return (
+    <Link
+      to={href}
+      onClick={onClick}
+      aria-label="View my profile"
+      className="flex items-center gap-3 -m-1 p-1 rounded-md hover:bg-white/10 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white"
+    >
+      {content}
+    </Link>
+  );
+}
 
 function TopBarBreadcrumbs() {
   const { breadcrumbs } = useBreadcrumbs();
@@ -48,7 +95,16 @@ function TopBarBreadcrumbs() {
 }
 
 export function Layout() {
+  return (
+    <MyPhotoProvider>
+      <LayoutContent />
+    </MyPhotoProvider>
+  );
+}
+
+function LayoutContent() {
   const { user, logout } = useAuth();
+  const { photoUrl } = useMyPhoto();
   const navigate = useNavigate();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
@@ -74,6 +130,14 @@ export function Layout() {
   const displayRole = rawRole
     ? (ROLE_DISPLAY_LABELS[rawRole as AdminRole] ?? rawRole.replace(/_/g, " "))
     : "—";
+
+  // The sidebar footer doubles as the "My Profile" entry point — the
+  // only self-service route to /employees/:id (and its photo
+  // upload/remove controls) for roles like EMPLOYEE that don't get the
+  // admin-tier "Employees" nav item. Only linkable when an Employee
+  // profile is actually attached to this account (e.g. a naked
+  // superuser has none — see AdminPanelAccessTest's docblock).
+  const profileHref = user?.employee_id ? `/employees/${user.employee_id}` : null;
 
   return (
     <div className="flex h-screen overflow-hidden bg-gray-50">
@@ -102,19 +166,15 @@ export function Layout() {
           <SidebarNav onLinkClick={closeMobileMenu} />
         </div>
 
-        {/* User footer */}
+        {/* User footer — also the "My Profile" entry point */}
         <div className="px-4 py-4 border-t border-white/10">
-          <div className="flex items-center gap-3">
-            <div className="h-8 w-8 rounded-full bg-white/20 flex items-center justify-center text-white text-xs font-semibold">
-              {userInitials}
-            </div>
-            <div className="min-w-0">
-              <p className="text-white text-xs font-medium truncate">
-                {displayName}
-              </p>
-              <p className="text-white/50 text-xs truncate">{displayRole}</p>
-            </div>
-          </div>
+          <SidebarUserFooter
+            href={profileHref}
+            photoUrl={photoUrl}
+            initials={userInitials}
+            name={displayName}
+            role={displayRole}
+          />
         </div>
       </aside>
 
@@ -148,19 +208,14 @@ export function Layout() {
               <SidebarNav onLinkClick={closeMobileMenu} />
             </div>
             <div className="px-4 py-4 border-t border-white/10">
-              <div className="flex items-center gap-3">
-                <div className="h-8 w-8 rounded-full bg-white/20 flex items-center justify-center text-white text-xs font-semibold">
-                  {userInitials}
-                </div>
-                <div className="min-w-0">
-                  <p className="text-white text-xs font-medium truncate">
-                    {displayName}
-                  </p>
-                  <p className="text-white/50 text-xs truncate">
-                    {displayRole}
-                  </p>
-                </div>
-              </div>
+              <SidebarUserFooter
+                href={profileHref}
+                photoUrl={photoUrl}
+                initials={userInitials}
+                name={displayName}
+                role={displayRole}
+                onClick={closeMobileMenu}
+              />
             </div>
           </aside>
         </>
