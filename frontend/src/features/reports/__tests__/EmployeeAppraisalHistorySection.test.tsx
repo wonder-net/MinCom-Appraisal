@@ -131,7 +131,7 @@ describe("EmployeeAppraisalHistorySection", () => {
     // Check header columns
     expect(within(table).getByText("Cycle Name")).toBeInTheDocument();
     expect(within(table).getByText("Year")).toBeInTheDocument();
-    expect(within(table).getByText("KD Score")).toBeInTheDocument();
+    expect(within(table).getByText("KPI Score")).toBeInTheDocument();
     expect(within(table).getByText("BC Score")).toBeInTheDocument();
     expect(within(table).getByText("Total Score")).toBeInTheDocument();
     expect(
@@ -329,7 +329,7 @@ describe("EmployeeAppraisalHistorySection", () => {
     const rows = within(table).getAllByRole("row");
     const cells = within(rows[1]).getAllByRole("cell");
 
-    // KD Score (index 2), BC Score (index 3), Total Score (index 4)
+    // KPI Score (index 2), BC Score (index 3), Total Score (index 4)
     // should show em-dash for null
     expect(cells[2].textContent).toBe("\u2014");
     expect(cells[3].textContent).toBe("\u2014");

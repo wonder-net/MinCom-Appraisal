@@ -103,7 +103,7 @@ function HistoryTable({ rows }: HistoryTableProps) {
               Year
             </th>
             <th scope="col" className="px-6 py-3 font-semibold text-gray-900 text-right">
-              KD Score
+              KPI Score
             </th>
             <th scope="col" className="px-6 py-3 font-semibold text-gray-900 text-right">
               BC Score

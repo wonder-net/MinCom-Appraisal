@@ -49,7 +49,7 @@ export function KDVarianceTable({ rows }: KDVarianceTableProps) {
   return (
     <div>
       <h3 className="text-base font-semibold text-gray-900 mb-3">
-        KD Variance
+        KPI Variance
       </h3>
       <div className="overflow-x-auto rounded-md border border-gray-200">
         <table
@@ -59,7 +59,7 @@ export function KDVarianceTable({ rows }: KDVarianceTableProps) {
           <thead>
             <tr className="border-b border-gray-200 bg-gray-50 text-left">
               <th scope="col" className="px-4 py-3 font-semibold text-gray-900">
-                KD Title
+                KPI Title
               </th>
               <th scope="col" className="px-4 py-3 font-semibold text-gray-900 text-right">
                 Avg Self
