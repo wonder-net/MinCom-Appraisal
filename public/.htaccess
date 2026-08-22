@@ -51,6 +51,7 @@
     RewriteRule ^admin/user(/|$) %{ENV:BASE}/index.php [L]
     RewriteRule ^admin/role(/|$) %{ENV:BASE}/index.php [L]
     RewriteRule ^admin/competency(/|$) %{ENV:BASE}/index.php [L]
+    RewriteRule ^admin/sub-competency(/|$) %{ENV:BASE}/index.php [L]
     RewriteRule ^admin/bsc-perspective(/|$) %{ENV:BASE}/index.php [L]
     RewriteRule ^admin/notification(/|$) %{ENV:BASE}/index.php [L]
     RewriteRule ^admin/appraisal-cycle(/|$) %{ENV:BASE}/index.php [L]
