@@ -1,14 +1,16 @@
 # =============================================================================
-# symfony-backend/docker/nginx/Dockerfile
+# docker/nginx/Dockerfile
 #
 # The single public-facing web tier: builds the React SPA and serves it
 # alongside Symfony's API/EasyAdmin (FastCGI straight to the "php" service,
 # no separate reverse-proxy hop). Replaces the old three-container split
 # (root nginx + standalone frontend container + this nginx) with one image.
 #
-# IMPORTANT: build context is the REPO ROOT (not symfony-backend/), since
-# this Dockerfile needs to reach ../../frontend from here:
-#   docker build -f symfony-backend/docker/nginx/Dockerfile .
+# Build context is the REPO ROOT — this Symfony app IS the repo root
+# (no symfony-backend/ subdirectory; that layout predates a repo
+# flatten and every COPY below was corrected to match), with frontend/
+# as a direct sibling:
+#   docker build -f docker/nginx/Dockerfile .
 # =============================================================================
 
 # -----------------------------------------------------------------------------
@@ -48,12 +50,16 @@ COPY --from=frontend-build /app/dist /usr/share/nginx/html
 
 # Symfony's own public/ dir (just index.php + any asset-mapper output) —
 # needed for the fastcgi SCRIPT_FILENAME resolution. In dev this is
-# overridden by docker-compose's bind mount of ./symfony-backend/public for
-# live-editing; in uat/prod (no source mount) this baked-in copy is what's
-# actually served.
-COPY symfony-backend/public /app/public
+# overridden by docker-compose's bind mount of ./public for live-editing;
+# in uat/prod (no source mount) this baked-in copy is what's actually
+# served — see docker-compose.prod.yml's comment on why the nginx
+# service deliberately does NOT also bind-mount ./public over this in
+# prod: it would let a possibly-stale host checkout shadow the image's
+# own known-good copy, baked from the exact commit this image was built
+# from.
+COPY public /app/public
 
-COPY symfony-backend/docker/nginx/snippets/ /etc/nginx/snippets/
+COPY docker/nginx/snippets/ /etc/nginx/snippets/
 
 # Create non-root user and fix ownership of all paths nginx needs to write
 RUN addgroup -g 1001 -S appgroup && \
@@ -84,7 +90,7 @@ CMD ["nginx", "-g", "daemon off;"]
 FROM base AS dev
 
 USER root
-COPY symfony-backend/docker/nginx/default.dev.conf /etc/nginx/conf.d/default.conf
+COPY docker/nginx/default.dev.conf /etc/nginx/conf.d/default.conf
 RUN chown appuser:appgroup /etc/nginx/conf.d/default.conf
 USER appuser
 
@@ -94,7 +100,7 @@ USER appuser
 FROM base AS uat
 
 USER root
-COPY symfony-backend/docker/nginx/default.uat.conf /etc/nginx/conf.d/default.conf
+COPY docker/nginx/default.uat.conf /etc/nginx/conf.d/default.conf
 RUN chown appuser:appgroup /etc/nginx/conf.d/default.conf
 USER appuser
 
@@ -104,7 +110,7 @@ USER appuser
 FROM base AS prod
 
 USER root
-COPY symfony-backend/docker/nginx/default.prod.conf /etc/nginx/conf.d/default.conf
+COPY docker/nginx/default.prod.conf /etc/nginx/conf.d/default.conf
 RUN chown appuser:appgroup /etc/nginx/conf.d/default.conf
 USER appuser
 

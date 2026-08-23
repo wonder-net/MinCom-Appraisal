@@ -1,0 +1,108 @@
+name: Deploy
+
+# Builds and pushes both production images to GHCR on every push to
+# main, then SSHes to the production Droplet and redeploys via Docker
+# Compose (docker-compose.prod.yml). Assumes the one-time server setup
+# documented in docs/deployment.md is already done: GHCR_TOKEN already
+# `docker login`'d on the Droplet (Step 7), /opt/mincom is a git clone
+# of this repo, .env.prod.local is filled in (Step 5), and Let's
+# Encrypt certs exist at /etc/letsencrypt (Step 10).
+#
+# Required repository secrets (docs/deployment.md Step 2):
+#   DO_DROPLET_IP, DO_SSH_USER, DO_SSH_PRIVATE_KEY
+# (GHCR_TOKEN is also listed there, but only for the Droplet's own
+# one-time `docker login` — this workflow pushes using the built-in
+# GITHUB_TOKEN via the `packages: write` permission below, not a
+# separate PAT.)
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+    inputs:
+      version:
+        description: "Image tag to build/deploy (defaults to the current commit SHA)"
+        required: false
+
+env:
+  BACKEND_IMAGE: ghcr.io/${{ github.repository_owner }}/mincom-appraisal-symfony-backend
+  NGINX_IMAGE: ghcr.io/${{ github.repository_owner }}/mincom-appraisal-nginx
+
+jobs:
+  build-and-push:
+    name: Build and push images
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    outputs:
+      version: ${{ steps.version.outputs.value }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - id: version
+        run: echo "value=${{ inputs.version || github.sha }}" >> "$GITHUB_OUTPUT"
+
+      - uses: docker/setup-buildx-action@v3
+
+      - name: Log in to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build and push symfony-backend (php-fpm + Messenger workers)
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: docker/php/Dockerfile
+          target: prod
+          push: true
+          tags: |
+            ${{ env.BACKEND_IMAGE }}:${{ steps.version.outputs.value }}
+            ${{ env.BACKEND_IMAGE }}:latest
+          cache-from: type=gha,scope=backend
+          cache-to: type=gha,mode=max,scope=backend
+
+      - name: Build and push nginx (SPA + TLS termination)
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: docker/nginx/Dockerfile
+          target: prod
+          push: true
+          build-args: |
+            VITE_ENVIRONMENT=production
+            VITE_APP_VERSION=${{ steps.version.outputs.value }}
+          tags: |
+            ${{ env.NGINX_IMAGE }}:${{ steps.version.outputs.value }}
+            ${{ env.NGINX_IMAGE }}:latest
+          cache-from: type=gha,scope=nginx
+          cache-to: type=gha,mode=max,scope=nginx
+
+  deploy:
+    name: Deploy to production
+    needs: build-and-push
+    runs-on: ubuntu-latest
+    environment: production
+    steps:
+      - name: SSH deploy
+        uses: appleboy/ssh-action@v1.2.0
+        with:
+          host: ${{ secrets.DO_DROPLET_IP }}
+          username: ${{ secrets.DO_SSH_USER }}
+          key: ${{ secrets.DO_SSH_PRIVATE_KEY }}
+          script: |
+            set -euo pipefail
+            cd /opt/mincom
+            git fetch origin main
+            git reset --hard origin/main
+            export APP_VERSION=${{ needs.build-and-push.outputs.version }}
+            docker compose -f docker-compose.prod.yml pull
+            docker compose -f docker-compose.prod.yml up -d
+            # Removes only dangling (untagged) layers left behind by the
+            # pull above — does NOT prune old <sha>-tagged versions, so
+            # disk usage still grows deploy-over-deploy; revisit with a
+            # real retention policy (e.g. keep last N) if that becomes
+            # a problem.
+            docker image prune -f
