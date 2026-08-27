@@ -43,9 +43,9 @@
     # the React-shell catch-all below and renders the SPA's login page
     # instead of the admin panel (exactly what happened here — a full
     # EasyAdmin pass added 20 new controllers, discovered live).
-    RewriteRule ^admin$ %{ENV:BASE}/index.php [L]
-    RewriteRule ^admin/login$ %{ENV:BASE}/index.php [L]
-    RewriteRule ^admin/logout$ %{ENV:BASE}/index.php [L]
+    RewriteRule ^admin/?$ %{ENV:BASE}/index.php [L]
+    RewriteRule ^admin/login/?$ %{ENV:BASE}/index.php [L]
+    RewriteRule ^admin/logout/?$ %{ENV:BASE}/index.php [L]
     RewriteRule ^admin/employee(/|$) %{ENV:BASE}/index.php [L]
     RewriteRule ^admin/department(/|$) %{ENV:BASE}/index.php [L]
     RewriteRule ^admin/user(/|$) %{ENV:BASE}/index.php [L]
